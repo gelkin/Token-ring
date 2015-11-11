@@ -12,4 +12,5 @@ public class RequestMessage<ReplyType extends ResponseMessage> extends Message {
     void setResponseListenerAddress(InetSocketAddress responseListenerAddress) {
         this.responseListenerAddress = responseListenerAddress;
     }
+
 }

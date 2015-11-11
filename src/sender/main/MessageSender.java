@@ -54,6 +54,8 @@ public class MessageSender implements Closeable {
 
     public MessageSender(UniqueValue unique, int udpPort) throws IOException {
         this.unique = unique;
+
+        freeze();
         executor.submit(udpListener = new UdpListener(udpPort, this::acceptMessage));
         executor.submit(tcpListener = new TcpListener(this::acceptMessage));
         executor.submit(udpDispatcher = new UdpDispatcher(udpPort));
@@ -138,13 +140,7 @@ public class MessageSender implements Closeable {
         }, timeout, TimeUnit.MILLISECONDS);
     }
 
-    public <ReplyType extends ResponseMessage> void send(
-            InetSocketAddress address,
-            RequestMessage<ReplyType> message,
-            DispatchType type,
-            int timeout,
-            ReceiveListener<ReplyType> receiveListener
-    ) {
+    public <ReplyType extends ResponseMessage> void send(InetSocketAddress address, RequestMessage<ReplyType> message, DispatchType type, int timeout, ReceiveListener<ReplyType> receiveListener) {
         send(address, message, type, timeout, receiveListener, () -> {
         });
     }
@@ -152,8 +148,8 @@ public class MessageSender implements Closeable {
     /**
      * Sends a broadcast, and returns stream of answers which would be collected during timeout.
      * <p>
-     * Node will NOT receive its own request
-     * (i.e. response protocols of this sender will ignore any broadcast from itself (or from sender with same address?)).
+     * Node will receive its own request.
+     * But you can detect self-sent message: response.getIdentifier().unique.equals(sender.getUnique())
      * <p>
      * Note, that this method doesn't block the thread, but accessing elements of result stream does (in lazy way).
      *
@@ -163,17 +159,15 @@ public class MessageSender implements Closeable {
      * @return stream of replies
      */
     public <ReplyType extends ResponseMessage> Stream<ReplyType> broadcastAndWait(RequestMessage<ReplyType> message, int timeout) {
-        BlockingQueue<ResponseMessage> responseContainer = submit(null, message, DispatchType.PLAIN, timeout);
-        //noinspection unchecked
-        return StreamUtil.fromBlockingQueue(responseContainer, timeout)
-                .map(responseMessage -> ((ReplyType) responseMessage));
+        BlockingQueue<ReplyType> responseContainer = submit(null, message, DispatchType.UDP, timeout);
+        return StreamUtil.fromBlockingQueue(responseContainer, timeout);
     }
 
     /**
      * Sends a broadcast.
      * <p>
-     * Node will NOT receive its own request.
-     * (i.e. response protocols of this sender will ignore any broadcast from itself (or from sender with same address?)).
+     * Node will receive its own request.
+     * But you can detect self-sent message: response.getIdentifier().unique.equals(sender.getUnique())
      * <p>
      * Current thread is NOT blocked by this method call.
      * But no two response-actions (onReceive or onFail on any request) or response protocols will be executed at same time,
@@ -185,7 +179,7 @@ public class MessageSender implements Closeable {
      * @param <ReplyType>     response type
      */
     public <ReplyType extends ResponseMessage> void broadcast(RequestMessage<ReplyType> message, int timeout, ReceiveListener<ReplyType> receiveListener) {
-        submit(null, message, DispatchType.PLAIN, timeout, response -> receiveListener.onReceive(message.getResponseListenerAddress(), response));
+        submit(null, message, DispatchType.UDP, timeout, response -> receiveListener.onReceive(message.getResponseListenerAddress(), response));
     }
 
     /**
@@ -198,15 +192,13 @@ public class MessageSender implements Closeable {
      * @param delay   when to send a mention
      */
     public void remind(ReminderMessage message, int delay) {
-        Runnable remind = () -> send(null, message, DispatchType.LOOPBACK, 10000,
-                (addr, response) -> {
-                }
-        );
-        scheduledExecutor.schedule(remind, delay, TimeUnit.MILLISECONDS);
+        Runnable remindTask = () -> send(null, message, DispatchType.LOOPBACK, 10000, (addr, response) -> {
+        });
+        scheduledExecutor.schedule(remindTask, delay, TimeUnit.MILLISECONDS);
     }
 
-    private <ReplyType extends ResponseMessage> BlockingQueue<ResponseMessage> submit(InetSocketAddress address, RequestMessage<ReplyType> message, DispatchType type, int timeout) {
-        LinkedBlockingQueue<ResponseMessage> container = new LinkedBlockingQueue<>();
+    private <ReplyType extends ResponseMessage> BlockingQueue<ReplyType> submit(InetSocketAddress address, RequestMessage<ReplyType> message, DispatchType type, int timeout) {
+        LinkedBlockingQueue<ReplyType> container = new LinkedBlockingQueue<>();
         submit(address, message, type, timeout, container::offer);
         return container;
     }
@@ -219,7 +211,7 @@ public class MessageSender implements Closeable {
     private <ReplyType extends ResponseMessage> void submit(InetSocketAddress address, RequestMessage<ReplyType> message, DispatchType type, int timeout, Consumer<ReplyType> consumer) {
         MessageIdentifier identifier = new MessageIdentifier(unique);
         message.setIdentifier(identifier);
-        message.setResponseListenerAddress(udpListener.getListeningAddress());
+        message.setResponseListenerAddress(getUdpListenerAddress());
         responsesWaiters.put(identifier, responseMessage -> {
                     try {
                         //noinspection unchecked
@@ -232,9 +224,8 @@ public class MessageSender implements Closeable {
         );
 
         forwardSingle(address, message, type);
-        scheduledExecutor.schedule(() -> {
-            responsesWaiters.remove(message.getIdentifier());
-        }, timeout, TimeUnit.MILLISECONDS);
+        scheduledExecutor.schedule(() -> responsesWaiters.remove(message.getIdentifier())
+                , timeout, TimeUnit.MILLISECONDS);
     }
 
     /**
@@ -257,9 +248,9 @@ public class MessageSender implements Closeable {
         }
 
         SendInfo sendInfo = toSendableForm(address, message);
-        if (dispatchType == DispatchType.PLAIN) {
+        if (dispatchType == DispatchType.UDP) {
             udpDispatcher.send(sendInfo);
-        } else if (dispatchType == DispatchType.SAFE) {
+        } else if (dispatchType == DispatchType.TCP) {
             tcpDispatcher.send(sendInfo);
         } else {
             throw new IllegalArgumentException("Can't process dispatch type of " + dispatchType);
@@ -303,6 +294,10 @@ public class MessageSender implements Closeable {
         onFrozenLock.unlock();
     }
 
+    public UniqueValue getUnique() {
+        return unique;
+    }
+
     public InetSocketAddress getUdpListenerAddress() {
         return udpListener.getListeningAddress();
     }
@@ -320,9 +315,9 @@ public class MessageSender implements Closeable {
     }
 
     public enum DispatchType {
-        PLAIN, // UDP
-        SAFE, // TCP
-        LOOPBACK // don't laugh, it may be really essential
+        UDP,
+        TCP,
+        LOOPBACK
     }
 
     private class IncomeMessagesProcessor implements Runnable {
@@ -337,6 +332,8 @@ public class MessageSender implements Closeable {
                             process(((RequestMessage) message));
                         else if (message instanceof ResponseMessage)
                             process(((ResponseMessage) message));
+                        else
+                            logger.warn("Got message of unknown type: " + message.getClass().getSimpleName());
                     } finally {
                         onFrozenLock.unlock();
                     }
@@ -347,15 +344,12 @@ public class MessageSender implements Closeable {
         }
 
         private void process(RequestMessage request) {
-            if (unique.equals(request.getIdentifier().unique))
-                return;
-
             for (ReplyProtocol replyProtocol : replyProtocols) {
                 try {
                     ResponseMessage response = tryApplyProtocol(replyProtocol, request);
                     if (response != null) {
                         response.setIdentifier(request.getIdentifier());
-                        forwardSingle(request.getResponseListenerAddress(), response, DispatchType.PLAIN);
+                        forwardSingle(request.getResponseListenerAddress(), response, DispatchType.UDP);
                     }
                     return;
                 } catch (ClassCastException ignored) {
