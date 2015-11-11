@@ -268,7 +268,7 @@ public class MessageSender implements Closeable {
         try {
             received.offer((Message) serializer.deserialize(bytes));
         } catch (IOException | ClassCastException e) {
-            logger.trace("Got some trash");
+            logger.info("Got some trash", e);
         }
     }
 

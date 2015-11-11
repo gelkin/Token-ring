@@ -31,12 +31,16 @@ public class StreamUtil {
 
         @Override
         public T next() {
-            return Optional.ofNullable(acquireNext())
-                    .orElseThrow(IllegalStateException::new);
+            try {
+                return Optional.ofNullable(acquireNext())
+                        .orElseThrow(IllegalStateException::new);
+            } finally {
+                nextElement = null;
+            }
         }
 
         private T acquireNext() {
-            if (nextElement != null) {
+            if (nextElement == null) {
                 long remainingTime = stopTime - System.currentTimeMillis();
                 if (remainingTime <= 0)
                     return null;
