@@ -17,6 +17,6 @@ public class Message implements Serializable {
 
     @Override
     public String toString() {
-        return getClass().getSimpleName();
+        return "Message <" + getClass().getSimpleName() + ">";
     }
 }
