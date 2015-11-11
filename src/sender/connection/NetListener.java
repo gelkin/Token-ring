@@ -59,10 +59,12 @@ public abstract class NetListener<S extends Closeable> implements Runnable, Clos
         return socket;
     }
 
-    public abstract InetSocketAddress getListeningAddress();
-
     @Override
     public void close() throws IOException {
         socket.close();
+    }
+
+    public int getListeningPort() {
+        return port;
     }
 }

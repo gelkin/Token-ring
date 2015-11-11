@@ -35,8 +35,4 @@ public class TcpListener extends NetListener<ServerSocket> {
         return bos.toByteArray();
     }
 
-    @Override
-    public InetSocketAddress getListeningAddress() {
-        return new InetSocketAddress(getSocket().getInetAddress(), getSocket().getLocalPort());
-    }
 }

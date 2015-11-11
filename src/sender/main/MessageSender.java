@@ -14,6 +14,7 @@ import sender.util.StreamUtil;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.Collection;
 import java.util.Map;
@@ -44,6 +45,7 @@ public class MessageSender implements Closeable {
     private final NetDispatcher udpDispatcher;
 
     private final UniqueValue unique;
+    private final InetAddress listeningAddress;
 
     private final Serializer serializer = new Serializer();
 
@@ -52,8 +54,9 @@ public class MessageSender implements Closeable {
     private final Collection<ReplyProtocol> replyProtocols = new ConcurrentLinkedQueue<>();
     private final Map<MessageIdentifier, Consumer<ResponseMessage>> responsesWaiters = new ConcurrentHashMap<>();
 
-    public MessageSender(UniqueValue unique, int udpPort) throws IOException {
+    public MessageSender(UniqueValue unique, InetAddress listeningAddress, int udpPort) throws IOException {
         this.unique = unique;
+        this.listeningAddress = listeningAddress;
 
         freeze();
         executor.submit(udpListener = new UdpListener(udpPort, this::acceptMessage));
@@ -299,11 +302,11 @@ public class MessageSender implements Closeable {
     }
 
     public InetSocketAddress getUdpListenerAddress() {
-        return udpListener.getListeningAddress();
+        return new InetSocketAddress(listeningAddress, udpListener.getListeningPort());
     }
 
     public InetSocketAddress getTcpListenerAddress() {
-        return tcpListener.getListeningAddress();
+        return new InetSocketAddress(listeningAddress, tcpListener.getListeningPort());
     }
 
     @Override

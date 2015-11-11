@@ -27,7 +27,4 @@ public class UdpListener extends NetListener<DatagramSocket> {
         return Arrays.copyOf(packet.getData(), packet.getLength());
     }
 
-    public InetSocketAddress getListeningAddress() {
-        return new InetSocketAddress(getSocket().getLocalAddress(), getSocket().getLocalPort());
-    }
 }
