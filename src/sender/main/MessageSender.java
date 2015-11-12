@@ -1,7 +1,7 @@
 package sender.main;
 
 import org.apache.log4j.Logger;
-import sender.*;
+import sender.UniqueValue;
 import sender.connection.*;
 import sender.listeners.Cancellation;
 import sender.listeners.FailListener;
@@ -21,8 +21,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
@@ -49,7 +47,7 @@ public class MessageSender implements Closeable {
 
     private final Serializer serializer = new Serializer();
 
-    private final Lock onFrozenLock = new ReentrantLock();
+    private final Semaphore freezeControl = new Semaphore(1);
 
     private final Collection<ReplyProtocol> replyProtocols = new ConcurrentLinkedQueue<>();
     private final Map<MessageIdentifier, Consumer<ResponseMessage>> responsesWaiters = new ConcurrentHashMap<>();
@@ -89,8 +87,7 @@ public class MessageSender implements Closeable {
      */
     public <ReplyType extends ResponseMessage> Optional<ReplyType> sendAndWait(InetSocketAddress address, RequestMessage<ReplyType> message, DispatchType type, int timeout) {
         try {
-            //noinspection unchecked
-            ReplyType response = (ReplyType) submit(address, message, type, timeout)
+            ReplyType response = submit(address, message, type, timeout)
                     .poll(timeout, TimeUnit.MILLISECONDS);
 
             return Optional.ofNullable(response);
@@ -281,10 +278,12 @@ public class MessageSender implements Closeable {
      * Sender is initiated in frozen state
      * <p>
      * Call of this method also destroys all registered response protocols and response-actions of send- and broadcastAndWait
-     * methods (optional feature)
+     * methods
+     * <p>
+     * Note, that this method MUST be invoked inside response-action, in order to avoid unexpected concurrent effects
      */
     public void freeze() {
-        onFrozenLock.lock();
+        freezeControl.acquireUninterruptibly();
 
         replyProtocols.clear();
         responsesWaiters.clear();
@@ -294,7 +293,7 @@ public class MessageSender implements Closeable {
      * Unfreezes request-messages receiver. Messages received in frozen state begin to be processed.
      */
     public void unfreeze() {
-        onFrozenLock.unlock();
+        freezeControl.release();
     }
 
     public UniqueValue getUnique() {
@@ -328,18 +327,17 @@ public class MessageSender implements Closeable {
         public void run() {
             try {
                 while (!Thread.currentThread().isInterrupted()) {
-                    onFrozenLock.lock();
-                    try {
-                        Message message = received.take();
-                        if (message instanceof RequestMessage)
-                            process(((RequestMessage) message));
-                        else if (message instanceof ResponseMessage)
-                            process(((ResponseMessage) message));
-                        else
-                            logger.warn("Got message of unknown type: " + message.getClass().getSimpleName());
-                    } finally {
-                        onFrozenLock.unlock();
-                    }
+                    // if in frozen state, wait for unfreezing
+                    freezeControl.acquire();
+                    freezeControl.release();
+
+                    Message message = received.take();
+                    if (message instanceof RequestMessage)
+                        process(((RequestMessage) message));
+                    else if (message instanceof ResponseMessage)
+                        process(((ResponseMessage) message));
+                    else
+                        logger.warn("Got message of unknown type: " + message.getClass().getSimpleName());
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();

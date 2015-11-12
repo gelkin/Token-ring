@@ -1,11 +1,13 @@
 package sender.connection;
 
-import java.io.IOError;
+import org.apache.log4j.Logger;
+
 import java.io.IOException;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
 public abstract class NetDispatcher implements Runnable {
+    private static final Logger logger = Logger.getLogger(NetDispatcher.class);
 
     private final BlockingQueue<SendInfo> queue = new LinkedBlockingQueue<>();
 
@@ -13,10 +15,11 @@ public abstract class NetDispatcher implements Runnable {
     public void run() {
         try {
             while (!Thread.currentThread().isInterrupted()) {
+                SendInfo sendInfo = queue.take();
                 try {
-                    submit(queue.take());
+                    submit(sendInfo);
                 } catch (IOException e) {
-                    // TODO:
+                    logger.info(String.format("Dispatch failure (to %s)", sendInfo.address));
                 }
             }
         } catch (InterruptedException e) {

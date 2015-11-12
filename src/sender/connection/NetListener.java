@@ -1,12 +1,15 @@
 package sender.connection;
 
+import com.sun.istack.internal.logging.Logger;
+
 import java.io.Closeable;
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.util.function.Consumer;
 
 public abstract class NetListener<S extends Closeable> implements Runnable, Closeable {
-    public static final int RESTORE_ATTEMPTS_DELAY = 1000;
+    private static final Logger logger = Logger.getLogger(NetListener.class);
+
+    public static final int RESTORE_ATTEMPTS_DELAY = 5000;
 
     private final int port;
     private S socket;
@@ -27,6 +30,7 @@ public abstract class NetListener<S extends Closeable> implements Runnable, Clos
                     byte[] data = receive(socket);
                     dataConsumer.accept(data);
                 } catch (IOException e) {
+                    logger.info("Data sending failed, initiating restore protocol");
                     restore();
                 }
             }
@@ -49,6 +53,7 @@ public abstract class NetListener<S extends Closeable> implements Runnable, Clos
                 }
                 socket = createSocket(port);
             } catch (IOException e) {
+                logger.info(String.format("Restore was unsuccessful. Repeat in %d ms.", RESTORE_ATTEMPTS_DELAY));
                 Thread.sleep(RESTORE_ATTEMPTS_DELAY);
             }
         }

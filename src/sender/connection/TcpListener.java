@@ -5,7 +5,6 @@ import org.apache.commons.io.IOUtils;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.function.Consumer;
@@ -30,4 +29,8 @@ public class TcpListener extends NetListener<ServerSocket> {
         return bos.toByteArray();
     }
 
+    @Override
+    public int getListeningPort() {
+        return getSocket().getLocalPort();
+    }
 }
