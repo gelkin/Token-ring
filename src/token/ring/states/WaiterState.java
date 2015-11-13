@@ -152,7 +152,7 @@ public class WaiterState extends NodeState {
 
             ctx.netmap = acceptToken.netmap;
 
-            ctx.switchToState(new WaiterState(ctx));
+            ctx.switchToState(new TokenHolderState(ctx));
 
             return new AcceptTokenResponse();
         }
