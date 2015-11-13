@@ -24,8 +24,7 @@ public class TokenHolderState extends NodeState {
     /**
      * At any time equals to !(IDLE_TIME time went since became Token holder) + !(computed pi) + !(currently waiting for NodeInfo)
      */
-    // TODO: set to 2 when pi computation gets done
-    private int stagesRemained = 1;
+    private int stagesRemained = 2;
 
     private NodeInfo acceptingTokenNode;
 
@@ -46,10 +45,12 @@ public class TokenHolderState extends NodeState {
         Arrays.stream(replyProtocols).forEach(sender::registerReplyProtocol);
 
         sender.remind(broadcastHaveTokenRF.newReminder(), 0);
-        IdlingTimeoutExpiredReminder idleReminder = idlingTimeoutExpirationRF.newReminder();
-        sender.remind(idleReminder, IDLE_TIME);
-        // TODO: run pi computation
-        // TODO: do not forget to set init stageRemaining to 2
+        sender.remind(idlingTimeoutExpirationRF.newReminder(), IDLE_TIME);
+        ctx.executor.submit(() -> {
+            ctx.piComputator.next();
+            logger.info("Pi computation finished, current progress is " + ctx.getCurrentProgress());
+            markStageCompleted();
+        });
 
         if (decideWhetherToUpdateNetMap()) {
             logger.info("Decided to gather node info");
@@ -78,6 +79,7 @@ public class TokenHolderState extends NodeState {
     }
 
     private void passToken() {
+        assert ctx.netmap.size() != 0;
         if (ctx.netmap.size() == 1) {
             logger.info("No more nodes are known to give token");
             // TODO: what to do next?
@@ -90,12 +92,11 @@ public class TokenHolderState extends NodeState {
                     this::passTokenFail
             );
         }
-
     }
 
     private void passTokenStage2(PassTokenHandshakeResponseMsg handshakeResponse) {
         logger.info("Handshake success, passing token");
-        sender.send(handshakeResponse.tcpAddress, new AcceptToken(), MessageSender.DispatchType.TCP, 5000,
+        sender.send(handshakeResponse.tcpAddress, new AcceptToken(ctx.piComputator.getCurrentValue(), ctx.getCurrentProgress(), ctx.netmap), MessageSender.DispatchType.TCP, 5000,
                 (source, response) -> {
                     logger.info("Token successfully passed");
                     ctx.switchToState(new WaiterState(ctx));
@@ -161,6 +162,5 @@ public class TokenHolderState extends NodeState {
             return IdlingTimeoutExpiredReminder.class;
         }
     }
-
 
 }

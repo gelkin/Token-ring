@@ -1,6 +1,7 @@
 package token.ring.states;
 
 
+import computation.HexPiComputation;
 import org.apache.log4j.Logger;
 import sender.listeners.ReplyProtocol;
 import sender.message.ReminderFactory;
@@ -9,6 +10,7 @@ import token.ring.NodeContext;
 import token.ring.NodeState;
 import token.ring.message.*;
 
+import java.math.BigDecimal;
 import java.util.Arrays;
 
 public class WaiterState extends NodeState {
@@ -23,6 +25,8 @@ public class WaiterState extends NodeState {
             new RequestForNodeInfoRp(),
             new LostTokenRp(),
             new AmCandidateRp(),
+            new PassTokenHandShakeRF(),
+            new AcceptTokenRF(),
             waiterTimeoutRF
     };
 
@@ -122,6 +126,45 @@ public class WaiterState extends NodeState {
         @Override
         public Class<? extends WaiterTimeoutExpireReminder> requestType() {
             return WaiterTimeoutExpireReminder.class;
+        }
+    }
+
+    private class PassTokenHandShakeRF implements ReplyProtocol<PassTokenHandshakeMsg, PassTokenHandshakeResponseMsg> {
+        @Override
+        public PassTokenHandshakeResponseMsg makeResponse(PassTokenHandshakeMsg passTokenHandshakeMsg) {
+            return new PassTokenHandshakeResponseMsg(ctx.getCurrentProgress(), ctx.sender.getTcpListenerAddress());
+        }
+
+        @Override
+        public Class<? extends PassTokenHandshakeMsg> requestType() {
+            return PassTokenHandshakeMsg.class;
+        }
+    }
+
+    private class AcceptTokenRF implements ReplyProtocol<AcceptToken, AcceptTokenResponse> {
+        @Override
+        public AcceptTokenResponse makeResponse(AcceptToken acceptToken) {
+            if (acceptToken.progress > ctx.getCurrentProgress()) {
+                ctx.piComputator = new HexPiComputation(acceptToken.progress, acceptToken.piValue, ctx.PI_PRECISION_STEP);
+            }
+            logger.info(String.format("Got pi number. Current progress: %d, last %d digits: %s",
+                    ctx.getCurrentProgress(), ctx.PI_PRECISION_STEP, lastDigits()));
+
+            ctx.netmap = acceptToken.netmap;
+            return new AcceptTokenResponse();
+        }
+
+        private String lastDigits() {
+            int currentProgress = ctx.getCurrentProgress();
+            return ctx.piComputator.getCurrentValue()
+                    .bigDecimalValue(currentProgress + 5, BigDecimal.ROUND_HALF_EVEN)
+                    .toString()
+                    .substring(currentProgress, ctx.PI_PRECISION_STEP);
+        }
+
+        @Override
+        public Class<? extends AcceptToken> requestType() {
+            return AcceptToken.class;
         }
     }
 }

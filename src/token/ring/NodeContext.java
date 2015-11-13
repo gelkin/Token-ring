@@ -1,5 +1,6 @@
 package token.ring;
 
+import computation.HexPiComputation;
 import misc.Colorer;
 import org.apache.log4j.Logger;
 import sender.main.MessageSender;
@@ -8,15 +9,22 @@ import token.ring.states.WaiterState;
 import java.io.Closeable;
 import java.io.IOException;
 import java.net.NetworkInterface;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 
 public class NodeContext implements Closeable {
     private static final Logger logger = Logger.getLogger(NodeContext.class);
 
+    public int PI_PRECISION_STEP = 20;
+
     public NodeState currentState;
 
     public MessageSender sender;
     public NetworkMap netmap;
+
+    public HexPiComputation piComputator = new HexPiComputation(PI_PRECISION_STEP);
+    public final ExecutorService executor = Executors.newCachedThreadPool();
 
     public NodeContext(NetworkInterface networkInterface, int udpPort) throws IOException {
         sender = new MessageSender(networkInterface, udpPort);
@@ -40,8 +48,11 @@ public class NodeContext implements Closeable {
     }
 
     public Priority getCurrentPriority() {
-        //TODO: computation
-        return null;
+        return new Priority(getCurrentProgress(), sender.getUnique());
+    }
+
+    public int getCurrentProgress() {
+        return piComputator.getCurrentPrecision();
     }
 
     @Override
