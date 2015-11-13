@@ -69,7 +69,7 @@ public class MessageSender implements Closeable {
         freeze();
         executor.submit(udpListener = new UdpListener(udpPort, this::acceptMessage));
         executor.submit(tcpListener = new TcpListener(this::acceptMessage));
-        executor.submit(udpDispatcher = new UdpDispatcher(udpPort));
+        executor.submit(udpDispatcher = new UdpDispatcher(networkInterface, udpPort));
         executor.submit(tcpDispatcher = new TcpDispatcher());
         executor.submit(new IncomeMessagesProcessor());
         executor.submit(new MainProcessor());
@@ -457,13 +457,16 @@ public class MessageSender implements Closeable {
     private class MainProcessor implements Runnable {
         @Override
         public void run() {
-            try {
-                while (!Thread.currentThread().isInterrupted()) {
+            while (!Thread.currentThread().isInterrupted()) {
+                try {
                     toProcess.take().run();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } catch (Throwable e) {
+                    logger.trace("Processing threw an exception", e);
                 }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
             }
+
         }
     }
 

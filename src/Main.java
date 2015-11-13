@@ -9,6 +9,10 @@ public class Main {
 //        Collections.list(NetworkInterface.getNetworkInterfaces())
 //                .forEach(System.out::println);
 
+//        MessageSender sender = new MessageSender(NetworkInterface.getByName("wlan0"), 1247);
+//        sender.unfreeze();
+//        sender.broadcast(new LostTokenMsg());
+
         try (NodeContext nodeContext = new NodeContext(NetworkInterface.getByName("wlan0"), 1247)) {
             nodeContext.initiate();
             int stopComputation = System.in.read();
