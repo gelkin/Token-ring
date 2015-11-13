@@ -159,7 +159,7 @@ public class WaiterState extends NodeState {
             return ctx.piComputator.getCurrentValue()
                     .bigDecimalValue(currentProgress + 5, BigDecimal.ROUND_HALF_EVEN)
                     .toString()
-                    .substring(Math.max(0, currentProgress - ctx.PI_PRECISION_STEP), currentProgress);
+                    .substring(Math.max(0, currentProgress - ctx.PI_PRECISION_STEP + 2), currentProgress + 2);
         }
 
         @Override
