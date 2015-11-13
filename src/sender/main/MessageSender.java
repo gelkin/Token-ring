@@ -263,7 +263,6 @@ public class MessageSender implements Closeable {
     private <ReplyType extends ResponseMessage> void submit(InetSocketAddress address, RequestMessage<ReplyType> message, DispatchType type, int timeout, Consumer<ReplyType> consumer) {
         MessageIdentifier identifier = new MessageIdentifier(unique);
         message.setIdentifier(identifier);
-        message.setResponseListenerAddress(getUdpListenerAddress());
         responseWaiters.put(identifier, responseMessage -> {
                     try {
                         //noinspection unchecked
@@ -299,6 +298,7 @@ public class MessageSender implements Closeable {
             return;
         }
 
+        message.setResponseListenerAddress(getUdpListenerAddress());
         if (dispatchType == DispatchType.UDP) {
             if (address == null) {
                 logger.info(ColoredArrows.UDP_BROADCAST + String.format(" %s", message));
