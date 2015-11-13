@@ -2,6 +2,7 @@ package sender.connection;
 
 import java.io.IOException;
 import java.net.*;
+import java.util.Objects;
 import java.util.Optional;
 
 public class UdpDispatcher extends NetDispatcher {
@@ -17,9 +18,10 @@ public class UdpDispatcher extends NetDispatcher {
         }
 
         broadcastAddress = networkInterface.getInterfaceAddresses().stream()
+                .map(InterfaceAddress::getBroadcast)
+                .filter(Objects::nonNull)
                 .findAny()
-                .orElseThrow(() -> new IllegalArgumentException("Network interface has no interface addresses"))
-                .getAddress();
+                .orElseThrow(() -> new IllegalArgumentException("Network interface has no broadcast addresses"));
     }
 
     @Override
