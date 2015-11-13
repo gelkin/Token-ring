@@ -1,6 +1,6 @@
 package sender.message;
 
-import sender.UniqueValue;
+import token.ring.UniqueValue;
 
 import java.io.Serializable;
 import java.util.Objects;
@@ -38,5 +38,10 @@ public class MessageIdentifier implements Serializable {
         int result = id;
         result = 31 * result + unique.hashCode();
         return result;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("[%s #%d]", unique, id);
     }
 }

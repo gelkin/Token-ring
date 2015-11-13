@@ -1,4 +1,4 @@
-package sender;
+package token.ring;
 
 import java.io.Serializable;
 import java.net.NetworkInterface;
