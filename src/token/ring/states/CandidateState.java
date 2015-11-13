@@ -10,7 +10,6 @@ import token.ring.message.AmCandidateMsg;
 import token.ring.message.AmCandidateResponseMsg;
 import token.ring.message.AmSuperiorCandidateMsg;
 
-import java.util.Arrays;
 import java.util.stream.Stream;
 
 public class CandidateState extends NodeState {
@@ -23,7 +22,7 @@ public class CandidateState extends NodeState {
     @Override
     public void start() {
         Stream.concat(
-                Arrays.stream(new ScaredOfTokenMsgs(ctx, logger).getProtocols()),
+                new ScaredOfTokenMsgs(ctx, logger).getProtocols(),
                 Stream.of(
                         new ListenToOtherCandidates()
                 )

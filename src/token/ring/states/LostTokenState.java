@@ -8,7 +8,6 @@ import token.ring.NodeState;
 import token.ring.ScaredOfTokenMsgs;
 import token.ring.message.*;
 
-import java.util.Arrays;
 import java.util.stream.Stream;
 
 public class LostTokenState extends NodeState {
@@ -30,7 +29,7 @@ public class LostTokenState extends NodeState {
 
     public void start() {
         Stream.concat(
-                Arrays.stream(new ScaredOfTokenMsgs(ctx, logger).getProtocols()),
+                new ScaredOfTokenMsgs(ctx, logger).getProtocols() ,
                 Stream.of(
                         new AmCandidateRp(),
                         timeoutExpireRF

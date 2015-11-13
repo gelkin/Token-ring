@@ -245,7 +245,7 @@ public class MessageSender implements Closeable {
     }
 
     public void rereceive(RequestMessage message) {
-        logger.info(ColoredArrows.RECEIVED + String.format(" %s", message));
+        logger.info(ColoredArrows.RERECEIVE + String.format(" %s", message));
         received.offer(message);
     }
 
@@ -321,7 +321,7 @@ public class MessageSender implements Closeable {
     private void acceptMessage(byte[] bytes) {
         try {
             Message message = (Message) serializer.deserialize(bytes);
-            if (message.getIdentifier().unique.equals(unique))
+            if (message.getIdentifier().unique.equals(unique) && message instanceof RequestMessage)
                 return;  // skip if sent by itself; loopback messages are put to queue directly and hence not missed
 
             received.offer(message);
@@ -410,7 +410,7 @@ public class MessageSender implements Closeable {
                         // save current toProcess, because can get frozen before offering to this queue
                         // in this case should drop message
                         if (!(message instanceof ReminderMessage))
-                            logger.info(ColoredArrows.RERECEIVE + String.format(" [%s] %s", message.getIdentifier().unique, message));
+                            logger.info(ColoredArrows.RECEIVED + String.format(" [%s] %s", message.getIdentifier().unique, message));
 
                         if (message instanceof RequestMessage)
                             toProcess.offer(() -> process((RequestMessage) message));
