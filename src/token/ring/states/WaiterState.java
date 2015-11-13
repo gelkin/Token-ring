@@ -151,6 +151,9 @@ public class WaiterState extends NodeState {
                     ctx.getCurrentProgress(), ctx.PI_PRECISION_STEP, lastDigits()));
 
             ctx.netmap = acceptToken.netmap;
+
+            ctx.switchToState(new WaiterState(ctx));
+
             return new AcceptTokenResponse();
         }
 
