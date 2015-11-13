@@ -209,7 +209,7 @@ public class MessageSender implements Closeable {
 
         submit(null, message, DispatchType.UDP, timeout, response -> {
             if (timeoutExpired.get()) return;
-            processingQueue.offer(() -> receiveListener.onReceive(message.getResponseListenerAddress(), response));
+            processingQueue.offer(() -> receiveListener.onReceive(response.getResponseListenerAddress(), response));
         });
 
         scheduler.schedule(timeout, () -> {
