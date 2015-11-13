@@ -23,7 +23,7 @@ public class TokenHolderState extends NodeState {
     /**
      * At any time equals to !(IDLE_TIME time went since became Token holder) + !(computed pi) + !(currently waiting for NodeInfo)
      */
-    private int stagesRemained = 2;
+    private int stagesRemained = 1;
 
     private NodeInfo acceptingTokenNode;
 

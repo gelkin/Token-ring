@@ -5,6 +5,7 @@ import org.apache.log4j.Logger;
 import sender.listeners.ReplyProtocol;
 import sender.message.VoidMessage;
 import token.ring.NodeContext;
+import token.ring.NodeInfo;
 import token.ring.NodeState;
 import token.ring.message.*;
 
@@ -17,6 +18,7 @@ public class WaiterState extends NodeState {
 
     private ReplyProtocol[] replyProtocols = new ReplyProtocol[]{
             new HaveTokenRp(),
+            new RequestForNodeInfoRp(),
             new LostTokenRp(),
             new AmCandidateRp(),
             new TimeoutExpireReminderRp()
@@ -73,6 +75,15 @@ public class WaiterState extends NodeState {
             logger.info("Heard from token");
             goingToStayAsIs = true;
             return null;
+        }
+    }
+
+    private class RequestForNodeInfoRp implements ReplyProtocol<RequestForNodeInfo, MyNodeInfoMsg> {
+        @Override
+        public MyNodeInfoMsg makeResponse(RequestForNodeInfo msg) {
+            logger.info("Heard RequestForNodeInfo from token");
+            goingToStayAsIs = true;
+            return new MyNodeInfoMsg(sender.getNodeInfo());
         }
     }
 

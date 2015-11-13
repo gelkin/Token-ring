@@ -56,6 +56,8 @@ public class CandidateState extends NodeState {
                 return null;
             } else if (isHisGreater == 0) {
                 logger.error("WTF? Heard the same priority from another candidate!");
+            } else {
+                logger.info(String.format("Detected Candidate with lower priority %s (our priority is %s)", otherCandidateClaim.priority, outPriority));
             }
 
             // tell him that he is not a nice guy
