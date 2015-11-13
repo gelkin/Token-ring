@@ -41,10 +41,6 @@ public class CandidateState extends NodeState {
         );
     }
 
-    @Override
-    public void close() {
-    }
-
     private class ListenToOtherCandidates implements ReplyProtocol<AmCandidateMsg, AmCandidateResponseMsg>{
         @Override
         public AmSuperiorCandidateMsg makeResponse(AmCandidateMsg otherCandidateClaim) {
@@ -63,6 +59,11 @@ public class CandidateState extends NodeState {
             // tell him that he is not a nice guy
             // in case he missed our proposal at election
             return new AmSuperiorCandidateMsg();
+        }
+
+        @Override
+        public Class<? extends AmCandidateMsg> requestType() {
+            return AmCandidateMsg.class;
         }
     }
 

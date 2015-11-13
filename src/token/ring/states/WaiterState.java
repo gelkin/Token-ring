@@ -3,9 +3,9 @@ package token.ring.states;
 
 import org.apache.log4j.Logger;
 import sender.listeners.ReplyProtocol;
+import sender.message.ReminderFactory;
 import sender.message.VoidMessage;
 import token.ring.NodeContext;
-import token.ring.NodeInfo;
 import token.ring.NodeState;
 import token.ring.message.*;
 
@@ -16,12 +16,14 @@ public class WaiterState extends NodeState {
 
     public static final int WAITER_TIMEOUT = 4000;
 
+    private final WaiterTimeoutRF waiterTimeoutRF = new WaiterTimeoutRF();
+
     private ReplyProtocol[] replyProtocols = new ReplyProtocol[]{
             new HaveTokenRp(),
             new RequestForNodeInfoRp(),
             new LostTokenRp(),
             new AmCandidateRp(),
-            new TimeoutExpireReminderRp()
+            waiterTimeoutRF
     };
 
     /**
@@ -47,26 +49,7 @@ public class WaiterState extends NodeState {
         // and repeats from beginning when timeout expires.
         // If got nothing during timeout, switches to LostTokenState
         goingToStayAsIs = false;
-        sender.remind(new WaiterTimeoutExpireReminder(), WAITER_TIMEOUT);
-    }
-
-    @Override
-    public void close() {
-    }
-
-    /**
-     * Sets goingToStayAsIs to true
-     * @return whether this method invocation changed value of goingToStayAsIs
-     */
-    private boolean goToStayAsIs() {
-        // All guys at military faculty heard as Ruslan said about this code:
-        // "This is useless in practice".
-        // It isn't at all
-        try {
-            return !goingToStayAsIs;
-        } finally {
-            goingToStayAsIs = true;
-        }
+        sender.remind(waiterTimeoutRF.newReminder(), WAITER_TIMEOUT);
     }
 
     private class HaveTokenRp implements ReplyProtocol<HaveTokenMsg, VoidMessage> {
@@ -75,6 +58,11 @@ public class WaiterState extends NodeState {
             logger.info("Heard from token");
             goingToStayAsIs = true;
             return null;
+        }
+
+        @Override
+        public Class<? extends HaveTokenMsg> requestType() {
+            return HaveTokenMsg.class;
         }
     }
 
@@ -85,12 +73,22 @@ public class WaiterState extends NodeState {
             goingToStayAsIs = true;
             return new MyNodeInfoMsg(sender.getNodeInfo());
         }
+
+        @Override
+        public Class<? extends RequestForNodeInfo> requestType() {
+            return RequestForNodeInfo.class;
+        }
     }
 
     private class LostTokenRp implements ReplyProtocol<LostTokenMsg, RecentlyHeardTokenMsg> {
         @Override
         public RecentlyHeardTokenMsg makeResponse(LostTokenMsg lostTokenMsg) {
             return new RecentlyHeardTokenMsg();
+        }
+
+        @Override
+        public Class<? extends LostTokenMsg> requestType() {
+            return LostTokenMsg.class;
         }
     }
 
@@ -99,18 +97,31 @@ public class WaiterState extends NodeState {
         public RecentlyHeardTokenMsg makeResponse(AmCandidateMsg amCandidateMsg) {
             return new RecentlyHeardTokenMsg();
         }
+
+        @Override
+        public Class<? extends AmCandidateMsg> requestType() {
+            return AmCandidateMsg.class;
+        }
     }
 
-    private class TimeoutExpireReminderRp implements ReplyProtocol<WaiterTimeoutExpireReminder, VoidMessage> {
+    private class WaiterTimeoutRF extends ReminderFactory<WaiterTimeoutExpireReminder> {
+        public WaiterTimeoutRF() {
+            super(WaiterTimeoutExpireReminder::new);
+        }
+
         @Override
-        public VoidMessage makeResponse(WaiterTimeoutExpireReminder reminder) {
+        protected void onRemind(WaiterTimeoutExpireReminder reminder) {
             if (goingToStayAsIs) {
                 waitAndRefreshTimeout();
             } else {
                 logger.info("Nothing interesting happened during timeout");
                 ctx.switchToState(new LostTokenState(ctx));
             }
-            return null;
+        }
+
+        @Override
+        public Class<? extends WaiterTimeoutExpireReminder> requestType() {
+            return WaiterTimeoutExpireReminder.class;
         }
     }
 }

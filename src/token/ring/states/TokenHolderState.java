@@ -3,6 +3,7 @@ package token.ring.states;
 import org.apache.log4j.Logger;
 import sender.listeners.ReplyProtocol;
 import sender.main.MessageSender;
+import sender.message.ReminderFactory;
 import sender.message.VoidMessage;
 import token.ring.NodeContext;
 import token.ring.NodeInfo;
@@ -23,14 +24,17 @@ public class TokenHolderState extends NodeState {
     /**
      * At any time equals to !(IDLE_TIME time went since became Token holder) + !(computed pi) + !(currently waiting for NodeInfo)
      */
+    // TODO: set to 2 when pi computation gets done
     private int stagesRemained = 1;
 
     private NodeInfo acceptingTokenNode;
 
+    private final IdlingTimeoutExpirationRF idlingTimeoutExpirationRF = new IdlingTimeoutExpirationRF();
+    private final BroadcastHaveTokenRF broadcastHaveTokenRF = new BroadcastHaveTokenRF();
     private ReplyProtocol[] replyProtocols = new ReplyProtocol[]{
-            new BroadcastHaveTokenReminderRp(),
+            broadcastHaveTokenRF,
             new ListenToOtherTokenHoldersRp(),
-            new IdlingTimeoutExpirationRp()
+            idlingTimeoutExpirationRF
     };
 
     public TokenHolderState(NodeContext ctx) {
@@ -41,22 +45,28 @@ public class TokenHolderState extends NodeState {
     public void start() {
         Arrays.stream(replyProtocols).forEach(sender::registerReplyProtocol);
 
-        sender.remind(new TimeoutExpireReminder(), 0);
-        sender.remind(new IdlingTimeoutExpiredReminder(), IDLE_TIME);
+        sender.remind(broadcastHaveTokenRF.newReminder(), 0);
+        IdlingTimeoutExpiredReminder idleReminder = idlingTimeoutExpirationRF.newReminder();
+        sender.remind(idleReminder, IDLE_TIME);
         // TODO: run pi computation
+        // TODO: do not forget to set init stageRemaining to 2
 
         if (decideWhetherToUpdateNetMap()) {
+            logger.info("Decided to gather node info");
             stagesRemained++;
             sender.broadcast(new RequestForNodeInfo(), 5000,
                     (source, response) -> ctx.netmap.add(response.nodeInfo),
-                    this::markStageCompleted);
+                    () -> {
+                        logger.info("Finished gathering node info");
+                        markStageCompleted();
+                    });
         }
 
     }
 
     private boolean decideWhetherToUpdateNetMap() {
         // true with probability 1 / n, where n is network map size
-        return new Random().nextInt(ctx.netmap.size()) == 0;
+        return new Random().nextInt(ctx.netmap.size() * 3) == 0;
     }
 
     private void markStageCompleted() {
@@ -69,7 +79,7 @@ public class TokenHolderState extends NodeState {
 
     private void passToken() {
         if (ctx.netmap.size() == 1) {
-            logger.info("No more nodes are known");
+            logger.info("No more nodes are known to give token");
             // TODO: what to do next?
             // repeat (temporal solution)
             ctx.switchToState(new TokenHolderState(ctx));
@@ -101,37 +111,54 @@ public class TokenHolderState extends NodeState {
         passToken();
     }
 
-    @Override
-    public void close() {
-    }
+    private class BroadcastHaveTokenRF extends ReminderFactory<TokenHolderTimeoutExpireReminder> {
+        public BroadcastHaveTokenRF() {
+            super(TokenHolderTimeoutExpireReminder::new);
+        }
 
-    private class BroadcastHaveTokenReminderRp implements ReplyProtocol<TimeoutExpireReminder, VoidMessage> {
         @Override
-        public VoidMessage makeResponse(TimeoutExpireReminder timeoutExpireReminder) {
-            sender.broadcast(new HaveTokenMsg(ctx.getCurrentPriority()), TIC);
-            sender.remind(new TimeoutExpireReminder(), TIC);
-            return null;
+        protected void onRemind(TokenHolderTimeoutExpireReminder reminder) {
+            sender.broadcast(new HaveTokenMsg(ctx.getCurrentPriority()));
+            sender.remind(newReminder(), TIC);
+        }
+
+        @Override
+        public Class<? extends TokenHolderTimeoutExpireReminder> requestType() {
+            return TokenHolderTimeoutExpireReminder.class;
         }
     }
 
     private class ListenToOtherTokenHoldersRp implements ReplyProtocol<HaveTokenMsg, VoidMessage> {
         @Override
         public VoidMessage makeResponse(HaveTokenMsg haveTokenMsg) {
-            Priority outPriority = ctx.getCurrentPriority();
-            if (outPriority.compareTo(haveTokenMsg.priority) < 0) {
-                logger.info(String.format("Detected token holder with higher priority %s (our priority is %s)", haveTokenMsg.priority, outPriority));
+            Priority ourPriority = ctx.getCurrentPriority();
+            if (ourPriority.compareTo(haveTokenMsg.priority) < 0) {
+                logger.info(String.format("Detected token holder with higher priority %s (our priority is %s)", haveTokenMsg.priority, ourPriority));
                 ctx.switchToState(new WaiterState(ctx));
             }
             return null;
         }
+
+        @Override
+        public Class<? extends HaveTokenMsg> requestType() {
+            return HaveTokenMsg.class;
+        }
     }
 
-    private class IdlingTimeoutExpirationRp implements ReplyProtocol<IdlingTimeoutExpiredReminder, VoidMessage> {
+    private class IdlingTimeoutExpirationRF extends ReminderFactory<IdlingTimeoutExpiredReminder> {
+        public IdlingTimeoutExpirationRF() {
+            super(IdlingTimeoutExpiredReminder::new);
+        }
+
         @Override
-        public VoidMessage makeResponse(IdlingTimeoutExpiredReminder haveTokenMsg) {
+        protected void onRemind(IdlingTimeoutExpiredReminder reminder) {
             logger.info("Idle period passed");
-            stagesRemained--;
-            return null;
+            markStageCompleted();
+        }
+
+        @Override
+        public Class<? extends IdlingTimeoutExpiredReminder> requestType() {
+            return IdlingTimeoutExpiredReminder.class;
         }
     }
 

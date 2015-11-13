@@ -26,8 +26,9 @@ public class ScaredOfTokenMsgs {
     }
 
     private void reactOnRequestFromToken(RequestMessage requestFromToken) {
-        ctx.sender.rereceive(requestFromToken);
+        // delegate processing to waiter
         ctx.switchToState(new WaiterState(ctx));
+        ctx.sender.rereceive(requestFromToken);
     }
 
     private class FromTokenHolder0 implements ReplyProtocol<HaveTokenMsg, VoidMessage> {
@@ -35,6 +36,11 @@ public class ScaredOfTokenMsgs {
         public VoidMessage makeResponse(HaveTokenMsg haveTokenMsg) {
             reactOnRequestFromToken(haveTokenMsg);
             return null;
+        }
+
+        @Override
+        public Class<? extends HaveTokenMsg> requestType() {
+            return HaveTokenMsg.class;
         }
     }
 
@@ -44,6 +50,11 @@ public class ScaredOfTokenMsgs {
             reactOnRequestFromToken(requestForNodeInfo);
             return null;
         }
+
+        @Override
+        public Class<? extends RequestForNodeInfo> requestType() {
+            return RequestForNodeInfo.class;
+        }
     }
 
 
@@ -52,6 +63,11 @@ public class ScaredOfTokenMsgs {
         public PassTokenHandshakeResponseMsg makeResponse(PassTokenHandshakeMsg passTokenHandshakeMsg) {
             reactOnRequestFromToken(passTokenHandshakeMsg);
             return null;
+        }
+
+        @Override
+        public Class<? extends PassTokenHandshakeMsg> requestType() {
+            return PassTokenHandshakeMsg.class;
         }
     }
 

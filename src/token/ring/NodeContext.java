@@ -3,7 +3,6 @@ package token.ring;
 import misc.Colorer;
 import org.apache.log4j.Logger;
 import sender.main.MessageSender;
-import token.ring.states.LostTokenState;
 import token.ring.states.WaiterState;
 
 import java.io.Closeable;
@@ -36,8 +35,8 @@ public class NodeContext implements Closeable {
         logger.info(Colorer.format("%2`$ -> $ %` State changed: %s -> %s", currentState.getClass().getSimpleName(), newState.getClass().getSimpleName()));
 
         currentState = newState;
-        currentState.start();
         sender.unfreeze();
+        currentState.start();
     }
 
     public Priority getCurrentPriority() {
