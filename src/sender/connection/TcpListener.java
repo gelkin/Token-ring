@@ -22,11 +22,15 @@ public class TcpListener extends NetListener<ServerSocket> {
     @Override
     protected byte[] receive(ServerSocket serverSocket) throws IOException {
         Socket socket = serverSocket.accept();
-        InputStream in = socket.getInputStream();
-
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        IOUtils.copy(in, bos);
-        return bos.toByteArray();
+        try {
+            InputStream in = socket.getInputStream();
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            IOUtils.copy(in, bos);
+            return bos.toByteArray();
+        } catch (IOException e) {
+            logger.debug("Reading from TCP socket failed", e);
+        }
+        return null;
     }
 
     @Override

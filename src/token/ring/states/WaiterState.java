@@ -1,14 +1,16 @@
-package token.ring;
+package token.ring.states;
 
 
 import org.apache.log4j.Logger;
-import sender.MessageSender;
-import sender.ReplyProtocol;
+import sender.listeners.ReplyProtocol;
+import sender.message.VoidMessage;
+import token.ring.NodeContext;
+import token.ring.NodeState;
 import token.ring.message.*;
 
 import java.util.Arrays;
 
-public class WaiterState implements AutoCloseable {
+public class WaiterState extends NodeState {
     private static final Logger logger = Logger.getLogger(WaiterState.class);
 
     public static final int WAITER_TIMEOUT = 4000;
@@ -20,18 +22,14 @@ public class WaiterState implements AutoCloseable {
             new TimeoutExpireReminderRp()
     };
 
-    private final Context ctx;
-    private final MessageSender sender;
-
     /**
      * Whether this should stay being LostToken and continue his lifecycle after timeout expires.
      * Transforms to CandidateState otherwise
      */
     private boolean goingToStayAsIs = false;
 
-    public WaiterState(Context ctx) {
-        this.ctx = ctx;
-        this.sender = ctx.sender;
+    public WaiterState(NodeContext ctx) {
+        super(ctx);
     }
 
     public void start() {
@@ -69,9 +67,9 @@ public class WaiterState implements AutoCloseable {
         }
     }
 
-    private class HaveTokenRp implements ReplyProtocol<HaveTokenMsg, VoidOrRecentlyHeard> {
+    private class HaveTokenRp implements ReplyProtocol<HaveTokenMsg, VoidMessage> {
         @Override
-        public RecentlyHeardTokenMsg makeResponse(HaveTokenMsg haveTokenMsg) {
+        public VoidMessage makeResponse(HaveTokenMsg haveTokenMsg) {
             logger.info("Heard from token");
             goingToStayAsIs = true;
             return null;
@@ -85,21 +83,21 @@ public class WaiterState implements AutoCloseable {
         }
     }
 
-    private class AmCandidateRp implements ReplyProtocol<AmCandidateMsg, RecentlyHeardTokenMsg> {
+    private class AmCandidateRp implements ReplyProtocol<AmCandidateMsg, AmCandidateResponseMsg> {
         @Override
         public RecentlyHeardTokenMsg makeResponse(AmCandidateMsg amCandidateMsg) {
             return new RecentlyHeardTokenMsg();
         }
     }
 
-    private class TimeoutExpireReminderRp implements ReplyProtocol<LostTokenTimeoutExpireReminder, sender.message.RecentlyHeardTokenMsg> {
+    private class TimeoutExpireReminderRp implements ReplyProtocol<WaiterTimeoutExpireReminder, VoidMessage> {
         @Override
-        public sender.message.RecentlyHeardTokenMsg makeResponse(LostTokenTimeoutExpireReminder reminder) {
+        public VoidMessage makeResponse(WaiterTimeoutExpireReminder reminder) {
             if (goingToStayAsIs) {
                 waitAndRefreshTimeout();
             } else {
                 logger.info("Nothing interesting happened during timeout");
-                ctx.switchToState(LostTokenState);
+                ctx.switchToState(new LostTokenState(ctx));
             }
             return null;
         }

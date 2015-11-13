@@ -1,13 +1,14 @@
 package sender.connection;
 
-import com.sun.istack.internal.logging.Logger;
+
+import org.apache.log4j.Logger;
 
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.function.Consumer;
 
 public abstract class NetListener<S extends Closeable> implements Runnable, Closeable {
-    private static final Logger logger = Logger.getLogger(NetListener.class);
+    protected final Logger logger = Logger.getLogger(this.getClass());
 
     public static final int RESTORE_ATTEMPTS_DELAY = 5000;
 
@@ -15,6 +16,8 @@ public abstract class NetListener<S extends Closeable> implements Runnable, Clos
     private S socket;
 
     private final Consumer<byte[]> dataConsumer;
+
+    private boolean isClosed;
 
     public NetListener(int port, Consumer<byte[]> dataConsumer) throws IOException {
         this.port = port;
@@ -28,10 +31,14 @@ public abstract class NetListener<S extends Closeable> implements Runnable, Clos
             while (!Thread.currentThread().isInterrupted()) {
                 try {
                     byte[] data = receive(socket);
-                    dataConsumer.accept(data);
+                    if (data != null) {
+                        dataConsumer.accept(data);
+                    }
                 } catch (IOException e) {
-                    logger.info("Data sending failed, initiating restore protocol");
-                    restore();
+                    if (!isClosed) {
+                        logger.info("Data sending failed, initiating restore protocol");
+                        restore();
+                    }
                 }
             }
         } catch (InterruptedException e) {
@@ -52,7 +59,11 @@ public abstract class NetListener<S extends Closeable> implements Runnable, Clos
                 } catch (Throwable ignored) {
                 }
                 socket = createSocket(port);
+                logger.info("Listener restored");
             } catch (IOException e) {
+                if (isClosed)
+                    return;
+
                 logger.info(String.format("Restore was unsuccessful. Repeat in %d ms.", RESTORE_ATTEMPTS_DELAY));
                 Thread.sleep(RESTORE_ATTEMPTS_DELAY);
             }
@@ -66,6 +77,7 @@ public abstract class NetListener<S extends Closeable> implements Runnable, Clos
 
     @Override
     public void close() throws IOException {
+        isClosed = true;
         socket.close();
     }
 

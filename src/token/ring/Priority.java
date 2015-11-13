@@ -1,12 +1,10 @@
 package token.ring;
 
-import sender.UniqueValue;
-
 import java.io.Serializable;
 
 public class Priority implements Comparable<Priority>, Serializable {
-    private final int progress;
-    private final UniqueValue unique;
+    public final int progress;
+    public final UniqueValue unique;
 
     public Priority(int progress, UniqueValue unique) {
         this.progress = progress;

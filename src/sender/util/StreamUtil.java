@@ -9,6 +9,9 @@ import java.util.stream.StreamSupport;
 
 public class StreamUtil {
     public static <T> Stream<T> fromBlockingQueue(BlockingQueue<T> queue, int timeout) {
+        /**
+         * Note that accessing stream will devastate the queue
+         */
         Iterable<T> it = () -> new BlockingQueueIterator<>(queue, timeout);
         return StreamSupport.stream(it.spliterator(), false);
     }
