@@ -4,6 +4,7 @@ import misc.Colorer;
 import org.apache.log4j.Logger;
 import sender.main.MessageSender;
 import token.ring.states.LostTokenState;
+import token.ring.states.WaiterState;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -21,7 +22,7 @@ public class NodeContext implements Closeable {
     public NodeContext(NetworkInterface networkInterface, int udpPort) throws IOException {
         sender = new MessageSender(networkInterface, udpPort);
         netmap = new NetworkMap(sender.getNodeInfo());
-        currentState = new LostTokenState(this);
+        currentState = new WaiterState(this);
     }
 
     public void initiate() {
