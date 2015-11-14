@@ -2,19 +2,20 @@ package token.ring.states;
 
 import org.apache.log4j.Logger;
 import sender.listeners.ReplyProtocol;
-import sender.message.VoidMessage;
+import sender.message.ReminderFactory;
 import token.ring.NodeContext;
 import token.ring.NodeState;
 import token.ring.ScaredOfTokenMsgs;
 import token.ring.message.*;
 
-import java.util.Arrays;
 import java.util.stream.Stream;
 
 public class LostTokenState extends NodeState {
     private static final Logger logger = Logger.getLogger(LostTokenState.class);
 
     public static final int LOST_TOKEN_TIMEOUT = 5000;
+
+    private final TimeoutExpireRF timeoutExpireRF = new TimeoutExpireRF();
 
     /**
      * Whether this should stay being LostToken and continue his lifecycle after timeout expires.
@@ -28,10 +29,10 @@ public class LostTokenState extends NodeState {
 
     public void start() {
         Stream.concat(
-                Arrays.stream(new ScaredOfTokenMsgs(ctx, logger).getProtocols()),
+                new ScaredOfTokenMsgs(ctx, logger).getProtocols() ,
                 Stream.of(
                         new AmCandidateRp(),
-                        new TimeoutExpireReminderRp()
+                        timeoutExpireRF
                 )
         ).forEach(sender::registerReplyProtocol);
 
@@ -60,7 +61,7 @@ public class LostTokenState extends NodeState {
         // If got nothing during timeout, switches to CandidateState
         goingToStayAsIs = false;
         broadcastLostToken();
-        sender.remind(new TimeoutExpireReminder(), LOST_TOKEN_TIMEOUT);
+        sender.remind(timeoutExpireRF.newReminder(), LOST_TOKEN_TIMEOUT);
     }
 
     /**
@@ -77,10 +78,6 @@ public class LostTokenState extends NodeState {
         } finally {
             goingToStayAsIs = true;
         }
-    }
-
-    @Override
-    public void close() {
     }
 
     private class AmCandidateRp implements ReplyProtocol<AmCandidateMsg, AmCandidateResponseMsg> {
@@ -101,21 +98,34 @@ public class LostTokenState extends NodeState {
             return null;
         }
 
+        @Override
+        public Class<? extends AmCandidateMsg> requestType() {
+            return AmCandidateMsg.class;
+        }
+
         private void infoAboutMessage(AmCandidateMsg amCandidateMsg, String text) {
             logger.info(String.format(text, amCandidateMsg.priority, ctx.getCurrentPriority()));
         }
     }
 
-    private class TimeoutExpireReminderRp implements ReplyProtocol<TimeoutExpireReminder, VoidMessage> {
+    private class TimeoutExpireRF extends ReminderFactory<LostTokenTimeoutExpireReminder> {
+        public TimeoutExpireRF() {
+            super(LostTokenTimeoutExpireReminder::new);
+        }
+
         @Override
-        public VoidMessage makeResponse(TimeoutExpireReminder reminder) {
+        protected void onRemind(LostTokenTimeoutExpireReminder reminder) {
             if (goingToStayAsIs) {
                 broadcastAndRefreshTimeout();
             } else {
                 logger.info("Nothing interesting happened during timeout");
                 ctx.switchToState(new CandidateState(ctx));
             }
-            return null;
+        }
+
+        @Override
+        public Class<? extends LostTokenTimeoutExpireReminder> requestType() {
+            return LostTokenTimeoutExpireReminder.class;
         }
     }
 

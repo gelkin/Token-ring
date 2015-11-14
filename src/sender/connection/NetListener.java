@@ -12,7 +12,7 @@ public abstract class NetListener<S extends Closeable> implements Runnable, Clos
 
     public static final int RESTORE_ATTEMPTS_DELAY = 5000;
 
-    private final int port;
+    private int port;
     private S socket;
 
     private final Consumer<byte[]> dataConsumer;
@@ -60,6 +60,7 @@ public abstract class NetListener<S extends Closeable> implements Runnable, Clos
                 }
                 socket = createSocket(port);
                 logger.info("Listener restored");
+                return;
             } catch (IOException e) {
                 if (isClosed)
                     return;
@@ -83,5 +84,14 @@ public abstract class NetListener<S extends Closeable> implements Runnable, Clos
 
     public int getListeningPort() {
         return port;
+    }
+
+    protected void changePort(int newPort) {
+        port = newPort;
+        try {
+            socket.close();
+            // will be restored automatically
+        } catch (IOException ignore) {
+        }
     }
 }

@@ -46,4 +46,5 @@ public class NetworkMap implements Serializable {
     public void remove(NodeInfo nodeInfo) {
         nodes.remove(nodeInfo);
     }
+
 }

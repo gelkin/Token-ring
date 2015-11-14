@@ -3,9 +3,13 @@ package token.ring;
 import org.apache.log4j.Logger;
 import sender.listeners.ReplyProtocol;
 import sender.main.RequestMessage;
-import sender.message.VoidMessage;
-import token.ring.message.*;
+import token.ring.message.AcceptToken;
+import token.ring.message.HaveTokenMsg;
+import token.ring.message.PassTokenHandshakeMsg;
+import token.ring.message.RequestForNodeInfo;
 import token.ring.states.WaiterState;
+
+import java.util.stream.Stream;
 
 public class ScaredOfTokenMsgs {
     private final NodeContext ctx;
@@ -17,42 +21,21 @@ public class ScaredOfTokenMsgs {
     }
 
 
-    public ReplyProtocol[] getProtocols() {
-        return new ReplyProtocol[]{
-                new FromTokenHolder0(),
-                new FromTokenHolder1(),
-                new FromTokenHolder2()
-        };
+    public Stream<ReplyProtocol> getProtocols() {
+        return Stream.<Class<? extends RequestMessage>>of(
+                // request types for processing of which we would delegate to waiter
+                HaveTokenMsg.class,
+                RequestForNodeInfo.class,
+                PassTokenHandshakeMsg.class,
+                AcceptToken.class
+        ).map(requestType -> ReplyProtocol.of(requestType, this::reactOnRequestFromToken));
     }
 
-    private void reactOnRequestFromToken(RequestMessage requestFromToken) {
-        ctx.sender.rereceive(requestFromToken);
+    private <T> T reactOnRequestFromToken(RequestMessage requestFromToken) {
+        // delegate processing to waiter
         ctx.switchToState(new WaiterState(ctx));
-    }
-
-    private class FromTokenHolder0 implements ReplyProtocol<HaveTokenMsg, VoidMessage> {
-        @Override
-        public VoidMessage makeResponse(HaveTokenMsg haveTokenMsg) {
-            reactOnRequestFromToken(haveTokenMsg);
-            return null;
-        }
-    }
-
-    private class FromTokenHolder1 implements ReplyProtocol<RequestForNodeInfo, MyNodeInfoMsg> {
-        @Override
-        public MyNodeInfoMsg makeResponse(RequestForNodeInfo requestForNodeInfo) {
-            reactOnRequestFromToken(requestForNodeInfo);
-            return null;
-        }
-    }
-
-
-    private class FromTokenHolder2 implements ReplyProtocol<PassTokenHandshakeMsg, PassTokenHandshakeResponseMsg> {
-        @Override
-        public PassTokenHandshakeResponseMsg makeResponse(PassTokenHandshakeMsg passTokenHandshakeMsg) {
-            reactOnRequestFromToken(passTokenHandshakeMsg);
-            return null;
-        }
+        ctx.sender.rereceive(requestFromToken);
+        return null;
     }
 
 }

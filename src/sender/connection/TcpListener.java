@@ -37,4 +37,8 @@ public class TcpListener extends NetListener<ServerSocket> {
     public int getListeningPort() {
         return getSocket().getLocalPort();
     }
+
+    public void changePort() {
+        changePort(0);
+    }
 }

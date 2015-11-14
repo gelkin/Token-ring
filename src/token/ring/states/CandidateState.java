@@ -10,7 +10,6 @@ import token.ring.message.AmCandidateMsg;
 import token.ring.message.AmCandidateResponseMsg;
 import token.ring.message.AmSuperiorCandidateMsg;
 
-import java.util.Arrays;
 import java.util.stream.Stream;
 
 public class CandidateState extends NodeState {
@@ -23,7 +22,7 @@ public class CandidateState extends NodeState {
     @Override
     public void start() {
         Stream.concat(
-                Arrays.stream(new ScaredOfTokenMsgs(ctx, logger).getProtocols()),
+                new ScaredOfTokenMsgs(ctx, logger).getProtocols(),
                 Stream.of(
                         new ListenToOtherCandidates()
                 )
@@ -39,10 +38,6 @@ public class CandidateState extends NodeState {
                     ctx.switchToState(new TokenHolderState(ctx));
                 }
         );
-    }
-
-    @Override
-    public void close() {
     }
 
     private class ListenToOtherCandidates implements ReplyProtocol<AmCandidateMsg, AmCandidateResponseMsg>{
@@ -63,6 +58,11 @@ public class CandidateState extends NodeState {
             // tell him that he is not a nice guy
             // in case he missed our proposal at election
             return new AmSuperiorCandidateMsg();
+        }
+
+        @Override
+        public Class<? extends AmCandidateMsg> requestType() {
+            return AmCandidateMsg.class;
         }
     }
 

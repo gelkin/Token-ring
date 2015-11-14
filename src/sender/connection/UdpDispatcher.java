@@ -2,19 +2,26 @@ package sender.connection;
 
 import java.io.IOException;
 import java.net.*;
+import java.util.Objects;
 import java.util.Optional;
 
 public class UdpDispatcher extends NetDispatcher {
-    private final InetAddress broadcastAddress;
-    private final int port;
+    private InetAddress broadcastAddress;
+    private int port;
 
-    public UdpDispatcher(int udpPort) {
+    public UdpDispatcher(NetworkInterface networkInterface, int udpPort) throws SocketException {
         this.port = udpPort;
         try {
-            broadcastAddress = Inet4Address.getByName("255.255.255.255");
+            broadcastAddress = networkInterface.getInterfaceAddresses().stream()
+                    .map(InterfaceAddress::getBroadcast)
+                    .filter(Objects::nonNull)
+                    .findAny()
+                    .orElse(Inet4Address.getByName("255.255.255.255"));
+
         } catch (UnknownHostException e) {
             throw new Error("Unexpected exception", e);
         }
+
     }
 
     @Override
@@ -26,5 +33,9 @@ public class UdpDispatcher extends NetDispatcher {
         DatagramSocket socket = new DatagramSocket();
         DatagramPacket packet = new DatagramPacket(sendInfo.data, sendInfo.data.length, address, port);
         socket.send(packet);
+    }
+
+    public void changePort(int newPort) {
+        port = newPort;
     }
 }

@@ -14,5 +14,6 @@ public abstract class NodeState {
 
     public abstract void start();
 
-    public abstract void close();
+    public void close() {
+    }
 }

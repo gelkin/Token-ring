@@ -9,4 +9,5 @@ public class AmCandidateMsg extends RequestMessage<AmCandidateResponseMsg> {
     public AmCandidateMsg(Priority priority) {
         this.priority = priority;
     }
+
 }
