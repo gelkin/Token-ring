@@ -26,4 +26,8 @@ public class UdpListener extends NetListener<DatagramSocket> {
         return Arrays.copyOf(packet.getData(), packet.getLength());
     }
 
+    public void changePort(int newPort) {
+        super.changePort(newPort);
+    }
+
 }

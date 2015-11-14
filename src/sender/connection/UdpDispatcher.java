@@ -34,4 +34,8 @@ public class UdpDispatcher extends NetDispatcher {
         DatagramPacket packet = new DatagramPacket(sendInfo.data, sendInfo.data.length, address, port);
         socket.send(packet);
     }
+
+    public void changePort(int newPort) {
+        changePort(newPort);
+    }
 }

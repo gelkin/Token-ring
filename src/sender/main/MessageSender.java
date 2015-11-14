@@ -366,6 +366,17 @@ public class MessageSender implements Closeable {
         freezeControl.release();
     }
 
+    /**
+     * Changes listeners ports.
+     *
+     * Udp port is changed to specified, and tcp ones are chosen randomly.
+     */
+    public void changePorts(int udpPort){
+        tcpListener.changePort();
+        udpListener.changePort(udpPort);
+    }
+
+
     public UniqueValue getUnique() {
         return unique;
     }
