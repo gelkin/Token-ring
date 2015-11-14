@@ -12,16 +12,16 @@ public class UdpDispatcher extends NetDispatcher {
     public UdpDispatcher(NetworkInterface networkInterface, int udpPort) throws SocketException {
         this.port = udpPort;
         try {
-            broadcastAddress = Inet4Address.getByName("255.255.255.255");
+            broadcastAddress = networkInterface.getInterfaceAddresses().stream()
+                    .map(InterfaceAddress::getBroadcast)
+                    .filter(Objects::nonNull)
+                    .findAny()
+                    .orElse(Inet4Address.getByName("255.255.255.255"));
+
         } catch (UnknownHostException e) {
             throw new Error("Unexpected exception", e);
         }
 
-        broadcastAddress = networkInterface.getInterfaceAddresses().stream()
-                .map(InterfaceAddress::getBroadcast)
-                .filter(Objects::nonNull)
-                .findAny()
-                .orElseThrow(() -> new IllegalArgumentException("Network interface has no broadcast addresses"));
     }
 
     @Override

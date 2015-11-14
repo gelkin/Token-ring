@@ -41,8 +41,8 @@ public class MessageSender implements Closeable {
 
     private final TcpListener tcpListener;
     private final UdpListener udpListener;
-    private final NetDispatcher tcpDispatcher;
-    private final NetDispatcher udpDispatcher;
+    private final TcpDispatcher tcpDispatcher;
+    private final UdpDispatcher udpDispatcher;
 
     private final UniqueValue unique;
     private final InetAddress listeningAddress;
@@ -375,6 +375,7 @@ public class MessageSender implements Closeable {
     public void changePorts(int udpPort){
         tcpListener.changePort();
         udpListener.changePort(udpPort);
+        udpDispatcher.changePort(udpPort);
     }
 
 

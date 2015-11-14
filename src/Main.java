@@ -33,7 +33,7 @@ public class Main {
             if (matcher.matches()) {
                 try {
                     int port = Integer.parseInt(matcher.group(1));
-                    if (port <= 0) {
+                    if (port < 1024 || port > 65535) {
                         System.out.println("Bad port");
                         break;
                     }
