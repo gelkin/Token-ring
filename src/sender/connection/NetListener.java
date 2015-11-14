@@ -89,9 +89,9 @@ public abstract class NetListener<S extends Closeable> implements Runnable, Clos
     protected void changePort(int newPort) {
         port = newPort;
         try {
-            restore();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+            socket.close();
+            // will be restored automatically
+        } catch (IOException ignore) {
         }
     }
 }
