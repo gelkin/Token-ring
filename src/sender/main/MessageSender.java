@@ -353,8 +353,8 @@ public class MessageSender implements Closeable {
         BlockingQueue<Runnable> processingQueue = this.toProcess;
         this.toProcess = new LinkedBlockingQueue<>();
         // Unblock processing queue
-//        processingQueue.offer(() -> {
-//        });
+        processingQueue.offer(() -> {
+        });
 
         logger.info(Colorer.paint("***", Colorer.Format.BLUE) + " Freeze");
     }
@@ -417,6 +417,7 @@ public class MessageSender implements Closeable {
                 while (!Thread.currentThread().isInterrupted()) {
                     // if in frozen state, wait for unfreezing
                     Message message = received.take();
+                    BlockingQueue<Runnable> processingQueue = MessageSender.this.toProcess;
 
                     freezeControl.acquire();
                     try {
@@ -426,9 +427,9 @@ public class MessageSender implements Closeable {
                             logger.info(ColoredArrows.RECEIVED + String.format(" [%s] %s", message.getIdentifier().unique, message));
 
                         if (message instanceof RequestMessage)
-                            toProcess.offer(() -> process((RequestMessage) message));
+                            processingQueue.offer(() -> process((RequestMessage) message));
                         else if (message instanceof ResponseMessage) {
-                            toProcess.offer(() -> process((ResponseMessage) message));
+                            processingQueue.offer(() -> process((ResponseMessage) message));
                         } else
                             logger.warn("Got message of unknown type: " + message.getClass().getSimpleName());
                     } finally {
