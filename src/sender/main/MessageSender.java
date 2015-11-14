@@ -369,10 +369,10 @@ public class MessageSender implements Closeable {
 
     /**
      * Changes listeners ports.
-     *
+     * <p>
      * Udp port is changed to specified, and tcp ones are chosen randomly.
      */
-    public void changePorts(int udpPort){
+    public void changePorts(int udpPort) {
         tcpListener.changePort();
         udpListener.changePort(udpPort);
         udpDispatcher.changePort(udpPort);
@@ -471,14 +471,18 @@ public class MessageSender implements Closeable {
     private class MainProcessor implements Runnable {
         @Override
         public void run() {
-            while (!Thread.currentThread().isInterrupted()) {
-                try {
-                    toProcess.take().run();
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                } catch (Throwable e) {
-                    logger.trace("Processing threw an exception", e);
+            try {
+                while (!Thread.currentThread().isInterrupted()) {
+                    try {
+                        toProcess.take().run();
+                    } catch (InterruptedException e) {
+                        throw e;
+                    } catch (Throwable e) {
+                        logger.trace("Processing threw an exception", e);
+                    }
                 }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
             }
 
         }

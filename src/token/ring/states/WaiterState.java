@@ -23,9 +23,9 @@ public class WaiterState extends NodeState {
     private ReplyProtocol[] replyProtocols = new ReplyProtocol[]{
             new HaveTokenRp(),
             new RequestForNodeInfoRp(),
-            new LostTokenRp(),
-            new AmCandidateRp(),
-            new PassTokenHandShakeRF(),
+            ReplyProtocol.of(LostTokenMsg.class, amCandidateMsg -> new RecentlyHeardTokenMsg()),
+            ReplyProtocol.of(AmCandidateMsg.class, amCandidateMsg -> new RecentlyHeardTokenMsg()),
+            ReplyProtocol.of(PassTokenHandshakeMsg.class, passTokenHandshakeMsg -> new PassTokenHandshakeResponseMsg(ctx.getCurrentProgress(), ctx.sender.getTcpListenerAddress())),
             new AcceptTokenRF(),
             waiterTimeoutRF
     };
@@ -84,30 +84,6 @@ public class WaiterState extends NodeState {
         }
     }
 
-    private class LostTokenRp implements ReplyProtocol<LostTokenMsg, RecentlyHeardTokenMsg> {
-        @Override
-        public RecentlyHeardTokenMsg makeResponse(LostTokenMsg lostTokenMsg) {
-            return new RecentlyHeardTokenMsg();
-        }
-
-        @Override
-        public Class<? extends LostTokenMsg> requestType() {
-            return LostTokenMsg.class;
-        }
-    }
-
-    private class AmCandidateRp implements ReplyProtocol<AmCandidateMsg, AmCandidateResponseMsg> {
-        @Override
-        public RecentlyHeardTokenMsg makeResponse(AmCandidateMsg amCandidateMsg) {
-            return new RecentlyHeardTokenMsg();
-        }
-
-        @Override
-        public Class<? extends AmCandidateMsg> requestType() {
-            return AmCandidateMsg.class;
-        }
-    }
-
     private class WaiterTimeoutRF extends ReminderFactory<WaiterTimeoutExpireReminder> {
         public WaiterTimeoutRF() {
             super(WaiterTimeoutExpireReminder::new);
@@ -126,18 +102,6 @@ public class WaiterState extends NodeState {
         @Override
         public Class<? extends WaiterTimeoutExpireReminder> requestType() {
             return WaiterTimeoutExpireReminder.class;
-        }
-    }
-
-    private class PassTokenHandShakeRF implements ReplyProtocol<PassTokenHandshakeMsg, PassTokenHandshakeResponseMsg> {
-        @Override
-        public PassTokenHandshakeResponseMsg makeResponse(PassTokenHandshakeMsg passTokenHandshakeMsg) {
-            return new PassTokenHandshakeResponseMsg(ctx.getCurrentProgress(), ctx.sender.getTcpListenerAddress());
-        }
-
-        @Override
-        public Class<? extends PassTokenHandshakeMsg> requestType() {
-            return PassTokenHandshakeMsg.class;
         }
     }
 
