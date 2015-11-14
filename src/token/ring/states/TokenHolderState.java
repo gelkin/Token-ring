@@ -96,7 +96,7 @@ public class TokenHolderState extends NodeState {
 
     private void passTokenStage2(PassTokenHandshakeResponseMsg handshakeResponse) {
         logger.info("Handshake success, passing token");
-        sender.send(handshakeResponse.tcpAddress, new AcceptToken(ctx.piComputator.getCurrentValue(), ctx.getCurrentProgress(), ctx.netmap), MessageSender.DispatchType.TCP, 5000,
+        sender.send(handshakeResponse.tcpAddress, new AcceptToken(ctx.piComputator, ctx.netmap), MessageSender.DispatchType.TCP, 5000,
                 (source, response) -> {
                     logger.info("Token successfully passed");
                     ctx.switchToState(new WaiterState(ctx));

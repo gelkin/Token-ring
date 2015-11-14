@@ -1,7 +1,6 @@
 package token.ring.states;
 
 
-import computation.HexPiComputation;
 import org.apache.log4j.Logger;
 import sender.listeners.ReplyProtocol;
 import sender.message.ReminderFactory;
@@ -10,7 +9,6 @@ import token.ring.NodeContext;
 import token.ring.NodeState;
 import token.ring.message.*;
 
-import java.math.BigDecimal;
 import java.util.Arrays;
 
 public class WaiterState extends NodeState {
@@ -108,8 +106,8 @@ public class WaiterState extends NodeState {
     private class AcceptTokenRF implements ReplyProtocol<AcceptToken, AcceptTokenResponse> {
         @Override
         public AcceptTokenResponse makeResponse(AcceptToken acceptToken) {
-            if (acceptToken.progress > ctx.getCurrentProgress()) {
-                ctx.piComputator = new HexPiComputation(acceptToken.progress, acceptToken.piValue, ctx.PI_PRECISION_STEP);
+            if (acceptToken.computation.getCurrentPrecision() > ctx.piComputator.getCurrentPrecision()) {
+                ctx.piComputator = acceptToken.computation;
             }
             logger.info(String.format("Got pi number. Current progress: %d, last %d digits: %s",
                     ctx.getCurrentProgress(), ctx.PI_PRECISION_STEP, lastDigits()));
@@ -123,8 +121,8 @@ public class WaiterState extends NodeState {
 
         private String lastDigits() {
             int currentProgress = ctx.getCurrentProgress();
-            return ctx.piComputator.getCurrentValue()
-                    .bigDecimalValue(currentProgress + 5, BigDecimal.ROUND_HALF_EVEN)
+            return ctx.piComputator
+                    .bigDecimalValue()
                     .toString()
                     .substring(Math.max(0, currentProgress - ctx.PI_PRECISION_STEP + 2), currentProgress + 2);
         }

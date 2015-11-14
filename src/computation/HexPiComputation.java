@@ -2,21 +2,18 @@ package computation;
 
 import org.apache.commons.math3.fraction.BigFraction;
 
+import java.io.Serializable;
+import java.math.BigDecimal;
 import java.util.Iterator;
 
-public class HexPiComputation implements Iterator<BigFraction> {
+public class HexPiComputation implements Iterator<BigFraction>, Serializable {
     private int iteration = 0;
 
     private BigFraction currentValue = new BigFraction(0);
     private final int precisionStep;
+    private BigFraction powerOf16 = new BigFraction(16);
 
     public HexPiComputation(int precisionStep) {
-        this.precisionStep = precisionStep;
-    }
-
-    public HexPiComputation(int iteration, BigFraction currentValue, int precisionStep) {
-        this.iteration = iteration;
-        this.currentValue = currentValue;
         this.precisionStep = precisionStep;
     }
 
@@ -36,7 +33,8 @@ public class HexPiComputation implements Iterator<BigFraction> {
     }
 
     private BigFraction countAdditive(int i) {
-        return new BigFraction(1).divide(new BigFraction(16).pow(i)).multiply(
+        powerOf16 = powerOf16.divide(16);
+        return powerOf16.multiply(
                 new BigFraction(4).divide(new BigFraction(8 * i + 1))
                         .subtract(new BigFraction(2).divide(new BigFraction(8 * i + 4)))
                         .subtract(new BigFraction(1).divide(new BigFraction(8 * i + 5)))
@@ -54,5 +52,9 @@ public class HexPiComputation implements Iterator<BigFraction> {
 
     public int getPrecisionStep() {
         return precisionStep;
+    }
+
+    public BigDecimal bigDecimalValue() {
+        return currentValue.bigDecimalValue(iteration + 5, BigDecimal.ROUND_HALF_EVEN);
     }
 }
