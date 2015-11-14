@@ -7,7 +7,7 @@ import java.util.Optional;
 
 public class UdpDispatcher extends NetDispatcher {
     private InetAddress broadcastAddress;
-    private final int port;
+    private int port;
 
     public UdpDispatcher(NetworkInterface networkInterface, int udpPort) throws SocketException {
         this.port = udpPort;
@@ -36,6 +36,6 @@ public class UdpDispatcher extends NetDispatcher {
     }
 
     public void changePort(int newPort) {
-        changePort(newPort);
+        port = newPort;
     }
 }

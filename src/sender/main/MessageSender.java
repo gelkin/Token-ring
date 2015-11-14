@@ -57,6 +57,7 @@ public class MessageSender implements Closeable {
     private final Map<MessageIdentifier, Consumer<ResponseMessage>> responseWaiters = new ConcurrentHashMap<>();
     private BlockingQueue<Runnable> toProcess = new LinkedBlockingQueue<>();
 
+
     public MessageSender(NetworkInterface networkInterface, int udpPort) throws IOException {
         Enumeration<InetAddress> inetAddresses = networkInterface.getInetAddresses();
         if (!inetAddresses.hasMoreElements())
