@@ -26,6 +26,13 @@ public abstract class Message implements Serializable {
         this.responseListenerAddress = responseListenerAddress;
     }
 
+    protected boolean logOnSend() {
+        return true;
+    }
+
+    protected boolean logOnReceive() {
+        return true;
+    }
 
     @Override
     public String toString() {

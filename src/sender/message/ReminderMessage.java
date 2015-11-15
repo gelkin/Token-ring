@@ -10,4 +10,9 @@ public class ReminderMessage extends RequestMessage<VoidMessage> {
         this.factoryId = factoryId;
         this.reminderId = reminderId;
     }
+
+    @Override
+    protected boolean logOnReceive(){
+        return false;
+    }
 }

@@ -19,11 +19,11 @@ public class WaiterState extends NodeState {
 
     private ReplyProtocol[] replyProtocols = new ReplyProtocol[]{
             ReplyProtocol.dumbOn(HaveTokenMsg.class, this::reactOnHaveTokenMsg),
+            ReplyProtocol.on(PassTokenHandshakeMsg.class, __ -> new PassTokenHandshakeResponseMsg(ctx.getCurrentProgress(), ctx.sender.getTcpListenerAddress())),
+            ReplyProtocol.on(AcceptToken.class, this::reactOnAcceptTokenMsg),
             ReplyProtocol.on(RequestForNodeInfo.class, this::reactOnRequestForNodeInfo),
             ReplyProtocol.on(LostTokenMsg.class, __ -> new RecentlyHeardTokenMsg()),
             ReplyProtocol.on(AmCandidateMsg.class, __ -> new RecentlyHeardTokenMsg()),
-            ReplyProtocol.on(PassTokenHandshakeMsg.class, __ -> new PassTokenHandshakeResponseMsg(ctx.getCurrentProgress(), ctx.sender.getTcpListenerAddress())),
-            ReplyProtocol.on(AcceptToken.class, this::reactOnAcceptTokenMsg),
             waiterTimeoutRF
     };
 

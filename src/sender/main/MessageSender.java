@@ -246,7 +246,9 @@ public class MessageSender implements Closeable {
     }
 
     public void rereceive(RequestMessage message) {
-        logger.info(ColoredArrows.RERECEIVE + String.format(" %s", message));
+        if (message.logOnReceive()) {
+            logger.info(ColoredArrows.RERECEIVE + String.format(" %s", message));
+        }
         received.offer(message);
     }
 
@@ -293,22 +295,28 @@ public class MessageSender implements Closeable {
     }
 
     private void forwardSingle(InetSocketAddress address, Message message, DispatchType dispatchType) {
+        boolean whetherLog = message.logOnSend();
+
         if (dispatchType == DispatchType.LOOPBACK) {
-            logger.info(ColoredArrows.LOOPBACK + String.format(" %s", message));
+            if (whetherLog)
+                logger.info(ColoredArrows.LOOPBACK + String.format(" %s", message));
             received.offer(message);
             return;
         }
 
         message.setResponseListenerAddress(getUdpListenerAddress());
         if (dispatchType == DispatchType.UDP) {
-            if (address == null) {
-                logger.info(ColoredArrows.UDP_BROADCAST + String.format(" %s", message));
-            } else {
-                logger.info(ColoredArrows.UDP + String.format(" %s: %s", address, message));
+            if (whetherLog) {
+                if (address == null) {
+                    logger.info(ColoredArrows.UDP_BROADCAST + String.format(" %s", message));
+                } else {
+                    logger.info(ColoredArrows.UDP + String.format(" %s: %s", address, message));
+                }
             }
             udpDispatcher.send(toSendableForm(address, message));
         } else if (dispatchType == DispatchType.TCP) {
-            logger.info(ColoredArrows.TCP + String.format(" %s: %s", address, message));
+            if (whetherLog)
+                logger.info(ColoredArrows.TCP + String.format(" %s: %s", address, message));
             tcpDispatcher.send(toSendableForm(address, message));
         } else {
             throw new IllegalArgumentException("Can't process dispatch type of " + dispatchType);
@@ -323,7 +331,7 @@ public class MessageSender implements Closeable {
         try {
             Message message = (Message) serializer.deserialize(bytes);
             if (message.getIdentifier().unique.equals(unique) && message instanceof RequestMessage)
-                return;  // skip if sent by itself; loopback messages are put to queue directly and hence not missed
+                return;  // skip if sent by someone with same unique value; loopback messages are put to processing queue directly and hence not lost
 
             received.offer(message);
         } catch (IOException | ClassCastException e) {
@@ -411,20 +419,18 @@ public class MessageSender implements Closeable {
                 while (!Thread.currentThread().isInterrupted()) {
                     // if in frozen state, wait for unfreezing
                     Message message = received.take();
-                    BlockingQueue<Runnable> processingQueue = MessageSender.this.toProcess;
 
                     freezeControl.acquire();
                     try {
                         // save current toProcess, because can get frozen before offering to this queue
                         // in this case should drop message
-                        if (!(message instanceof ReminderMessage))
-                            logger.info(ColoredArrows.RECEIVED + String.format(" [%s] %s", message.getIdentifier().unique, message));
+                        if (message.logOnReceive())
+                            logger.info(ColoredArrows.RECEIVED + String.format(" %s %s", message.getIdentifier().unique, message));
 
                         if (message instanceof RequestMessage)
-                            // TODO: losing a message?
-                            processingQueue.offer(() -> process((RequestMessage) message));
+                            toProcess.offer(() -> process((RequestMessage) message));
                         else if (message instanceof ResponseMessage) {
-                            processingQueue.offer(() -> process((ResponseMessage) message));
+                            toProcess.offer(() -> process((ResponseMessage) message));
                         } else
                             logger.warn("Got message of unknown type: " + message.getClass().getSimpleName());
                     } finally {
