@@ -1,5 +1,6 @@
 package token.ring.states;
 
+import misc.Colorer;
 import org.apache.log4j.Logger;
 import sender.listeners.ReplyProtocol;
 import sender.message.ReminderFactory;
@@ -15,11 +16,11 @@ public class LostTokenState extends NodeState {
 
     public static final int LOST_TOKEN_TIMEOUT = 5000;
 
-    private final TimeoutExpireRF timeoutExpireRF = new TimeoutExpireRF();
+    private final ReminderFactory timeoutExpireRF = ReminderFactory.of(LostTokenTimeoutExpireReminder::new, this::onTimeoutExpire);
 
     /**
      * Whether this should stay being LostToken and continue his lifecycle after timeout expires.
-     * Transforms to CandidateState otherwise
+     * Transforms to CandidateState otherwise as soon as timeout expires
      */
     private boolean goingToStayAsIs = false;
 
@@ -29,7 +30,7 @@ public class LostTokenState extends NodeState {
 
     public void start() {
         Stream.concat(
-                new ScaredOfTokenMsgs(ctx, logger).getProtocols() ,
+                new ScaredOfTokenMsgs(ctx, logger).getProtocols(),
                 Stream.of(
                         new AmCandidateRp(),
                         timeoutExpireRF
@@ -42,17 +43,16 @@ public class LostTokenState extends NodeState {
     private void broadcastLostToken() {
         sender.broadcast(new LostTokenMsg(), LOST_TOKEN_TIMEOUT,
                 (address, recentlyHeardTokenMsg) -> {
+                    // set goingToStayAsIs to true and notify if it is a first such message
                     if (goToStayAsIs()) {
                         logger.info("Received RecentlyHeardTokenMsg, going to repeat lifecycle");
                     }
-                },
-                () -> {
                 }
         );
     }
 
     private void broadcastAndRefreshTimeout() {
-        logger.info("Refreshing timeout, sending LostTokenMsg");
+        logger.info("Refreshing timeout, broadcasting LostTokenMsg");
 
         // broadcasts LostTokenMsg
 
@@ -80,6 +80,15 @@ public class LostTokenState extends NodeState {
         }
     }
 
+    private void onTimeoutExpire(LostTokenTimeoutExpireReminder reminder) {
+        if (goingToStayAsIs) {
+            broadcastAndRefreshTimeout();
+        } else {
+            logger.info("Nothing interesting happened during timeout");
+            ctx.switchToState(new CandidateState(ctx));
+        }
+    }
+
     private class AmCandidateRp implements ReplyProtocol<AmCandidateMsg, AmCandidateResponseMsg> {
         @Override
         public RecentlyHeardTokenMsg makeResponse(AmCandidateMsg amCandidateMsg) {
@@ -87,10 +96,10 @@ public class LostTokenState extends NodeState {
             if (isHisGreater < 0) {
                 // set goingToStayAsIs to true and notify if it is a first such message
                 if (goToStayAsIs()) {
-                    infoAboutMessage(amCandidateMsg, "Received from candidate with higher priority %s (our priority is %s), going to repeat lifecycle");
+                    logAboutMessage(amCandidateMsg, Colorer.format("Received from candidate with %1`higher%` priority %s (our priority is %s), going to repeat lifecycle"));
                 }
             } else if (isHisGreater > 0) {
-                infoAboutMessage(amCandidateMsg, "Received from candidate with lower priority %s (our priority is %s)");
+                logAboutMessage(amCandidateMsg, Colorer.format("Received from candidate with %2`lower%` priority %s (our priority is %s)"));
                 ctx.switchToState(new CandidateState(ctx));
             } else {
                 logger.error("WTF? Got AmCandidateMsg with same priority as mine!");
@@ -98,36 +107,14 @@ public class LostTokenState extends NodeState {
             return null;
         }
 
+        private void logAboutMessage(AmCandidateMsg amCandidateMsg, String text) {
+            logger.info(String.format(text, amCandidateMsg.priority, ctx.getCurrentPriority()));
+        }
+
         @Override
         public Class<? extends AmCandidateMsg> requestType() {
             return AmCandidateMsg.class;
         }
-
-        private void infoAboutMessage(AmCandidateMsg amCandidateMsg, String text) {
-            logger.info(String.format(text, amCandidateMsg.priority, ctx.getCurrentPriority()));
-        }
     }
-
-    private class TimeoutExpireRF extends ReminderFactory<LostTokenTimeoutExpireReminder> {
-        public TimeoutExpireRF() {
-            super(LostTokenTimeoutExpireReminder::new);
-        }
-
-        @Override
-        protected void onRemind(LostTokenTimeoutExpireReminder reminder) {
-            if (goingToStayAsIs) {
-                broadcastAndRefreshTimeout();
-            } else {
-                logger.info("Nothing interesting happened during timeout");
-                ctx.switchToState(new CandidateState(ctx));
-            }
-        }
-
-        @Override
-        public Class<? extends LostTokenTimeoutExpireReminder> requestType() {
-            return LostTokenTimeoutExpireReminder.class;
-        }
-    }
-
 
 }

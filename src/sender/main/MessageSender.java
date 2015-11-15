@@ -404,12 +404,6 @@ public class MessageSender implements Closeable {
         tcpListener.close();
     }
 
-    public enum DispatchType {
-        UDP,
-        TCP,
-        LOOPBACK
-    }
-
     private class IncomeMessagesProcessor implements Runnable {
         @Override
         public void run() {
@@ -427,6 +421,7 @@ public class MessageSender implements Closeable {
                             logger.info(ColoredArrows.RECEIVED + String.format(" [%s] %s", message.getIdentifier().unique, message));
 
                         if (message instanceof RequestMessage)
+                            // TODO: losing a message?
                             processingQueue.offer(() -> process((RequestMessage) message));
                         else if (message instanceof ResponseMessage) {
                             processingQueue.offer(() -> process((ResponseMessage) message));

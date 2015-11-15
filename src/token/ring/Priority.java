@@ -21,6 +21,6 @@ public class Priority implements Comparable<Priority>, Serializable {
 
     @Override
     public String toString() {
-        return String.format("Priority {%d %s}", progress, unique);
+        return String.format("{#%d | %s}", progress, unique);
     }
 }

@@ -57,4 +57,10 @@ public class HexPiComputation implements Iterator<BigFraction>, Serializable {
     public BigDecimal bigDecimalValue() {
         return currentValue.bigDecimalValue(iteration + 5, BigDecimal.ROUND_HALF_EVEN);
     }
+
+    public String getLastDigits(){
+        return bigDecimalValue()
+                .toString()
+                .substring(Math.max(0, iteration - precisionStep + 2), iteration + 2);
+    }
 }

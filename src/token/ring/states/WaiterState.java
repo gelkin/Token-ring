@@ -4,7 +4,6 @@ package token.ring.states;
 import org.apache.log4j.Logger;
 import sender.listeners.ReplyProtocol;
 import sender.message.ReminderFactory;
-import sender.message.VoidMessage;
 import token.ring.NodeContext;
 import token.ring.NodeState;
 import token.ring.message.*;
@@ -16,21 +15,21 @@ public class WaiterState extends NodeState {
 
     public static final int WAITER_TIMEOUT = 4000;
 
-    private final WaiterTimeoutRF waiterTimeoutRF = new WaiterTimeoutRF();
+    private final ReminderFactory waiterTimeoutRF = ReminderFactory.of(WaiterTimeoutExpireReminder::new, this::onTimeoutExpiration);
 
     private ReplyProtocol[] replyProtocols = new ReplyProtocol[]{
-            new HaveTokenRp(),
-            new RequestForNodeInfoRp(),
-            ReplyProtocol.of(LostTokenMsg.class, amCandidateMsg -> new RecentlyHeardTokenMsg()),
-            ReplyProtocol.of(AmCandidateMsg.class, amCandidateMsg -> new RecentlyHeardTokenMsg()),
-            ReplyProtocol.of(PassTokenHandshakeMsg.class, passTokenHandshakeMsg -> new PassTokenHandshakeResponseMsg(ctx.getCurrentProgress(), ctx.sender.getTcpListenerAddress())),
-            new AcceptTokenRF(),
+            ReplyProtocol.dumbOn(HaveTokenMsg.class, this::reactOnHaveTokenMsg),
+            ReplyProtocol.on(RequestForNodeInfo.class, this::reactOnRequestForNodeInfo),
+            ReplyProtocol.on(LostTokenMsg.class, __ -> new RecentlyHeardTokenMsg()),
+            ReplyProtocol.on(AmCandidateMsg.class, __ -> new RecentlyHeardTokenMsg()),
+            ReplyProtocol.on(PassTokenHandshakeMsg.class, __ -> new PassTokenHandshakeResponseMsg(ctx.getCurrentProgress(), ctx.sender.getTcpListenerAddress())),
+            ReplyProtocol.on(AcceptToken.class, this::reactOnAcceptTokenMsg),
             waiterTimeoutRF
     };
 
     /**
      * Whether this should stay being LostToken and continue his lifecycle after timeout expires.
-     * Transforms to CandidateState otherwise
+     * Transforms to LostTokenState otherwise as soon as timeout expires
      */
     private boolean goingToStayAsIs = false;
 
@@ -54,82 +53,39 @@ public class WaiterState extends NodeState {
         sender.remind(waiterTimeoutRF.newReminder(), WAITER_TIMEOUT);
     }
 
-    private class HaveTokenRp implements ReplyProtocol<HaveTokenMsg, VoidMessage> {
-        @Override
-        public VoidMessage makeResponse(HaveTokenMsg haveTokenMsg) {
-            logger.info("Heard from token");
-            goingToStayAsIs = true;
-            return null;
-        }
+    public void reactOnHaveTokenMsg(HaveTokenMsg haveTokenMsg) {
+        logger.info("Heard from token");
+        goingToStayAsIs = true;
+    }
 
-        @Override
-        public Class<? extends HaveTokenMsg> requestType() {
-            return HaveTokenMsg.class;
+    public MyNodeInfoMsg reactOnRequestForNodeInfo(RequestForNodeInfo requestForNodeInfo) {
+        logger.info("Heard RequestForNodeInfo from token");
+        goingToStayAsIs = true;
+        return new MyNodeInfoMsg(sender.getNodeInfo());
+    }
+
+    private void onTimeoutExpiration(WaiterTimeoutExpireReminder reminder) {
+        if (goingToStayAsIs) {
+            waitAndRefreshTimeout();
+        } else {
+            logger.info("Nothing interesting happened during timeout");
+            ctx.switchToState(new LostTokenState(ctx));
         }
     }
 
-    private class RequestForNodeInfoRp implements ReplyProtocol<RequestForNodeInfo, MyNodeInfoMsg> {
-        @Override
-        public MyNodeInfoMsg makeResponse(RequestForNodeInfo msg) {
-            logger.info("Heard RequestForNodeInfo from token");
-            goingToStayAsIs = true;
-            return new MyNodeInfoMsg(sender.getNodeInfo());
+    private AcceptTokenResponse reactOnAcceptTokenMsg(AcceptToken acceptToken) {
+        if (acceptToken.computation.getCurrentPrecision() > ctx.piComputator.getCurrentPrecision()) {
+            ctx.piComputator = acceptToken.computation;
         }
 
-        @Override
-        public Class<? extends RequestForNodeInfo> requestType() {
-            return RequestForNodeInfo.class;
-        }
+        logger.info(String.format("Got pi number. Current progress: %d, last %d digits: %s",
+                ctx.getCurrentProgress(), ctx.PI_PRECISION_STEP, ctx.piComputator.getLastDigits()));
+
+        ctx.netmap = acceptToken.netmap;
+
+        ctx.switchToState(new TokenHolderState(ctx));
+
+        return new AcceptTokenResponse();
     }
 
-    private class WaiterTimeoutRF extends ReminderFactory<WaiterTimeoutExpireReminder> {
-        public WaiterTimeoutRF() {
-            super(WaiterTimeoutExpireReminder::new);
-        }
-
-        @Override
-        protected void onRemind(WaiterTimeoutExpireReminder reminder) {
-            if (goingToStayAsIs) {
-                waitAndRefreshTimeout();
-            } else {
-                logger.info("Nothing interesting happened during timeout");
-                ctx.switchToState(new LostTokenState(ctx));
-            }
-        }
-
-        @Override
-        public Class<? extends WaiterTimeoutExpireReminder> requestType() {
-            return WaiterTimeoutExpireReminder.class;
-        }
-    }
-
-    private class AcceptTokenRF implements ReplyProtocol<AcceptToken, AcceptTokenResponse> {
-        @Override
-        public AcceptTokenResponse makeResponse(AcceptToken acceptToken) {
-            if (acceptToken.computation.getCurrentPrecision() > ctx.piComputator.getCurrentPrecision()) {
-                ctx.piComputator = acceptToken.computation;
-            }
-            logger.info(String.format("Got pi number. Current progress: %d, last %d digits: %s",
-                    ctx.getCurrentProgress(), ctx.PI_PRECISION_STEP, lastDigits()));
-
-            ctx.netmap = acceptToken.netmap;
-
-            ctx.switchToState(new TokenHolderState(ctx));
-
-            return new AcceptTokenResponse();
-        }
-
-        private String lastDigits() {
-            int currentProgress = ctx.getCurrentProgress();
-            return ctx.piComputator
-                    .bigDecimalValue()
-                    .toString()
-                    .substring(Math.max(0, currentProgress - ctx.PI_PRECISION_STEP + 2), currentProgress + 2);
-        }
-
-        @Override
-        public Class<? extends AcceptToken> requestType() {
-            return AcceptToken.class;
-        }
-    }
 }

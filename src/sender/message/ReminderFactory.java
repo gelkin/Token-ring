@@ -6,6 +6,7 @@ import sender.listeners.ReplyProtocol;
 
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 
 /**
  * Allows to create unique reminder messages.
@@ -22,8 +23,14 @@ public abstract class ReminderFactory<R extends ReminderMessage> implements Repl
     private final long factoryId = factoriesCreated.getAndIncrement();
     private final AtomicLong lastReminderId = new AtomicLong();
 
+    private final Class<R> reminderType;
+
     public ReminderFactory(BiFunction<Long, Long, R> reminderConstructor) {
         this.reminderCtor = reminderConstructor;
+
+        R apply = reminderConstructor.apply(-1L, -1L);
+        //noinspection unchecked
+        this.reminderType = (Class<R>) apply.getClass();
     }
 
     public R newReminder() {
@@ -40,4 +47,19 @@ public abstract class ReminderFactory<R extends ReminderMessage> implements Repl
     }
 
     protected abstract void onRemind(R reminder);
+
+    @Override
+    public final Class<? extends R> requestType() {
+        return reminderType;
+    }
+
+    public static <R extends ReminderMessage> ReminderFactory of(BiFunction<Long, Long, R> reminderConstructor, Consumer<R> onRemind) {
+        return new ReminderFactory<R>(reminderConstructor) {
+            @Override
+            protected void onRemind(R reminder) {
+                onRemind.accept(reminder);
+            }
+        };
+    }
+
 }
