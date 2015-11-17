@@ -13,13 +13,11 @@ import java.util.Arrays;
 public class WaiterState extends NodeState {
     private static final Logger logger = Logger.getLogger(WaiterState.class);
 
-    public static final int WAITER_TIMEOUT = 4000;
-
     private final ReminderFactory waiterTimeoutRF = ReminderFactory.of(WaiterTimeoutExpireReminder::new, this::onTimeoutExpiration);
 
     private ReplyProtocol[] replyProtocols = new ReplyProtocol[]{
             ReplyProtocol.dumbOn(HaveTokenMsg.class, this::reactOnHaveTokenMsg),
-            ReplyProtocol.on(PassTokenHandshakeMsg.class, __ -> new PassTokenHandshakeResponseMsg(ctx.getCurrentProgress(), ctx.sender.getTcpListenerAddress())),
+            ReplyProtocol.on(PassTokenHandshakeMsg.class, __ -> new PassTokenHandshakeResponseMsg(ctx.piComputator.getCurrentPrecision(), ctx.sender.getTcpListenerAddress())),
             ReplyProtocol.on(AcceptToken.class, this::reactOnAcceptTokenMsg),
             ReplyProtocol.on(RequestForNodeInfo.class, this::reactOnRequestForNodeInfo),
             ReplyProtocol.on(LostTokenMsg.class, __ -> new RecentlyHeardTokenMsg()),
@@ -50,7 +48,7 @@ public class WaiterState extends NodeState {
         // and repeats from beginning when timeout expires.
         // If got nothing during timeout, switches to LostTokenState
         goingToStayAsIs = false;
-        sender.remind(waiterTimeoutRF.newReminder(), WAITER_TIMEOUT);
+        sender.remind(waiterTimeoutRF.newReminder(), ctx.getTimeout("waiter.main"));
     }
 
     public void reactOnHaveTokenMsg(HaveTokenMsg haveTokenMsg) {
@@ -79,7 +77,7 @@ public class WaiterState extends NodeState {
         }
 
         logger.info(String.format("Got pi number. Current progress: %d, last %d digits: %s",
-                ctx.getCurrentProgress(), ctx.PI_PRECISION_STEP, ctx.piComputator.getLastDigits()));
+                ctx.piComputator.getCurrentPrecision(), ctx.PI_PRECISION_STEP, ctx.piComputator.getLastDigits()));
 
         ctx.netmap = acceptToken.netmap;
 

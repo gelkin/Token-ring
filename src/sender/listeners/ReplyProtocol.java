@@ -34,13 +34,13 @@ public interface ReplyProtocol<RequestType extends RequestMessage<ReplyType>, Re
         };
     }
 
-    static <Q extends RequestMessage<VoidMessage>> ReplyProtocol<Q, VoidMessage> dumbOn(
+    static <Q extends RequestMessage<A>, A extends ResponseMessage> ReplyProtocol<Q, A> dumbOn(
             Class<? extends Q> requestType,
             Consumer<? super Q> responseConstructor
     ){
-        return new ReplyProtocol<Q, VoidMessage>() {
+        return new ReplyProtocol<Q, A>() {
             @Override
-            public VoidMessage makeResponse(Q q) {
+            public A makeResponse(Q q) {
                 responseConstructor.accept(q);
                 return null;
             }

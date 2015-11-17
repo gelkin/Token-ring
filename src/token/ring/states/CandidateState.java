@@ -27,7 +27,7 @@ public class CandidateState extends NodeState {
                 )
         ).forEach(sender::registerReplyProtocol);
 
-        sender.broadcast(new AmCandidateMsg(ctx.getCurrentPriority()), 5000,
+        sender.broadcast(new AmCandidateMsg(ctx.getCurrentPriority()), ctx.getTimeout("candidate.main"),
                 (source, response) -> {
                     logger.info("Detected superior candidate");
                     ctx.switchToState(new WaiterState(ctx));
@@ -53,7 +53,7 @@ public class CandidateState extends NodeState {
         }
 
         // tell him that he is not a nice guy
-        // in case he missed our proposal at election
+        // in case he missed our candidature
         return new AmSuperiorCandidateMsg();
     }
 

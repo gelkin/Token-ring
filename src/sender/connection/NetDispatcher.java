@@ -7,7 +7,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
 public abstract class NetDispatcher implements Runnable {
-    private final Logger logger = Logger.getLogger(this.getClass());
+    protected final Logger logger = Logger.getLogger(this.getClass());
 
     private final BlockingQueue<SendInfo> queue = new LinkedBlockingQueue<>();
 

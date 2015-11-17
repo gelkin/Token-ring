@@ -149,6 +149,7 @@ public class MessageSender implements Closeable {
     ) {
         // 0 for idling, -1 for fail, 1 for received
         AtomicInteger ok = new AtomicInteger();
+        // remember current processing queue, otherwise fail timeout can put its task after freezing to new queue
         BlockingQueue<Runnable> processingQueue = this.toProcess;
 
         submit(address, message, type, timeout, response -> {
@@ -313,17 +314,17 @@ public class MessageSender implements Closeable {
                     logger.info(ColoredArrows.UDP + String.format(" %s: %s", address, message));
                 }
             }
-            udpDispatcher.send(toSendableForm(address, message));
+            udpDispatcher.send(makeSendInfo(address, message));
         } else if (dispatchType == DispatchType.TCP) {
             if (whetherLog)
                 logger.info(ColoredArrows.TCP + String.format(" %s: %s", address, message));
-            tcpDispatcher.send(toSendableForm(address, message));
+            tcpDispatcher.send(makeSendInfo(address, message));
         } else {
             throw new IllegalArgumentException("Can't process dispatch type of " + dispatchType);
         }
     }
 
-    private SendInfo toSendableForm(InetSocketAddress address, Message message) {
+    private SendInfo makeSendInfo(InetSocketAddress address, Message message) {
         return new SendInfo(address, serializer.serialize(message));
     }
 
@@ -360,7 +361,7 @@ public class MessageSender implements Closeable {
 
         BlockingQueue<Runnable> processingQueue = this.toProcess;
         this.toProcess = new LinkedBlockingQueue<>();
-        // Unblock processing queue
+        // Unblock processing thread
         processingQueue.offer(() -> {
         });
 
@@ -422,8 +423,6 @@ public class MessageSender implements Closeable {
 
                     freezeControl.acquire();
                     try {
-                        // save current toProcess, because can get frozen before offering to this queue
-                        // in this case should drop message
                         if (message.logOnReceive())
                             logger.info(ColoredArrows.RECEIVED + String.format(" %s %s", message.getIdentifier().unique, message));
 

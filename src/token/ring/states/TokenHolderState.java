@@ -17,9 +17,6 @@ import java.util.Random;
 public class TokenHolderState extends NodeState {
     private static final Logger logger = Logger.getLogger(TokenHolderState.class);
 
-    public static final int TIC = 5000;
-    public static final int IDLE_TIME = 2000;
-
     /**
      * At any time equals to !(IDLE_TIME time went since became Token holder) + !(computed pi) + !(currently waiting for NodeInfo)
      */
@@ -44,17 +41,17 @@ public class TokenHolderState extends NodeState {
         Arrays.stream(replyProtocols).forEach(sender::registerReplyProtocol);
 
         sender.remind(broadcastHaveTokenRF.newReminder(), 0);
-        sender.remind(idlingTimeoutExpirationRF.newReminder(), IDLE_TIME);
+        sender.remind(idlingTimeoutExpirationRF.newReminder(), ctx.getTimeout("holder.idle"));
         ctx.executor.submit(() -> {
             ctx.piComputator.next();
-            logger.info("Pi computation finished, current progress is " + ctx.getCurrentProgress());
+            logger.info("Pi computation finished, current progress is " + ctx.piComputator.getCurrentPrecision());
             markStageCompleted();
         });
 
         if (decideWhetherToUpdateNetMap()) {
             logger.info("Decided to gather node info");
             stagesRemained++;
-            sender.broadcast(new RequestForNodeInfo(), 5000,
+            sender.broadcast(new RequestForNodeInfo(), ctx.getTimeout("holder.gather-info"),
                     (source, response) -> ctx.netmap.add(response.nodeInfo),
                     () -> {
                         logger.info("Finished gathering node info");
@@ -87,7 +84,7 @@ public class TokenHolderState extends NodeState {
             ctx.switchToState(new TokenHolderState(ctx));
         } else {
             acceptingTokenNode = ctx.netmap.getNextFrom(sender.getNodeInfo());
-            sender.send(new InetSocketAddress(acceptingTokenNode.address, 0), new PassTokenHandshakeMsg(), DispatchType.UDP, 5000,
+            sender.send(new InetSocketAddress(acceptingTokenNode.address, 0), new PassTokenHandshakeMsg(), DispatchType.UDP, ctx.getTimeout("holder.handshake"),
                     (source, response) -> passTokenStage2(response),
                     this::passTokenFail
             );
@@ -96,7 +93,7 @@ public class TokenHolderState extends NodeState {
 
     private void passTokenStage2(PassTokenHandshakeResponseMsg handshakeResponse) {
         logger.info("Handshake success, passing token");
-        sender.send(handshakeResponse.tcpAddress, new AcceptToken(ctx.piComputator, ctx.netmap), DispatchType.TCP, 5000,
+        sender.send(handshakeResponse.tcpAddress, new AcceptToken(ctx.piComputator, ctx.netmap), DispatchType.TCP, ctx.getTimeout("holder.give-token"),
                 (source, response) -> {
                     logger.info("Token successfully passed");
                     ctx.switchToState(new WaiterState(ctx));
@@ -117,7 +114,7 @@ public class TokenHolderState extends NodeState {
 
     private void onTokenHolderTimeoutExpiration(TokenHolderTimeoutExpireReminder reminder){
         sender.broadcast(new HaveTokenMsg(ctx.getCurrentPriority()));
-        sender.remind(broadcastHaveTokenRF.newReminder(), TIC);
+        sender.remind(broadcastHaveTokenRF.newReminder(), ctx.getTimeout("holder.tic"));
     }
 
     private void onHearFromOtherToken(HaveTokenMsg haveTokenMsg) {
