@@ -494,7 +494,7 @@ public class MessageSender implements Closeable {
         TCP(Colorer.format("--%1`>%`--%1`>%`--%1`>%`")),
         LOOPBACK(Colorer.format("-%5`>%`---%5`<|%`  ")),
         RECEIVED(Colorer.format("%3`<%`--%3`<%`--%3`<%`--")),
-        RERECEIVE(Colorer.format("-%6`<%`----%6`|%`    "));
+        RERECEIVE(Colorer.format("-%6`<%`----%6`|%`  "));
 
         private final String text;
 

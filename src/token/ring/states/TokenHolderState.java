@@ -1,5 +1,6 @@
 package token.ring.states;
 
+import misc.Colorer;
 import org.apache.log4j.Logger;
 import sender.listeners.ReplyProtocol;
 import sender.main.DispatchType;
@@ -120,7 +121,7 @@ public class TokenHolderState extends NodeState {
     private void onHearFromOtherToken(HaveTokenMsg haveTokenMsg) {
         Priority ourPriority = ctx.getCurrentPriority();
         if (ourPriority.compareTo(haveTokenMsg.priority) < 0) {
-            logger.info(String.format("Detected token holder with higher priority %s (our priority is %s)", haveTokenMsg.priority, ourPriority));
+            logger.info(Colorer.format("Detected token holder with %1`higher%` priority %s (our priority is %s)", haveTokenMsg.priority, ourPriority));
             ctx.switchToState(new WaiterState(ctx));
         }
     }
