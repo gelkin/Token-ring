@@ -29,7 +29,7 @@ public class CandidateState extends NodeState {
 
         sender.broadcast(new AmCandidateMsg(ctx.getCurrentPriority()), ctx.getTimeout("candidate.main"),
                 (source, response) -> {
-                    logger.info("Detected superior candidate");
+                    response.logAboutThisMessage(logger);
                     ctx.switchToState(new WaiterState(ctx));
                 },
                 () -> {
