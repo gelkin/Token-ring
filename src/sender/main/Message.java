@@ -14,18 +14,19 @@ public abstract class Message implements Serializable {
         return identifier;
     }
 
-    void setIdentifier(MessageIdentifier identifier) {
+    final void setIdentifier(MessageIdentifier identifier) {
         this.identifier = identifier;
     }
 
-    InetSocketAddress getResponseListenerAddress() {
+    final InetSocketAddress getResponseListenerAddress() {
         return responseListenerAddress;
     }
 
-    void setResponseListenerAddress(InetSocketAddress responseListenerAddress) {
+    final void setResponseListenerAddress(InetSocketAddress responseListenerAddress) {
         this.responseListenerAddress = responseListenerAddress;
     }
 
+    // tuning options
     protected boolean logOnSend() {
         return true;
     }

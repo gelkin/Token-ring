@@ -136,7 +136,7 @@ public class MessageSender implements Closeable {
      * @param type            way of sending a message: TCP, single UPD...
      * @param timeout         timeout in milliseconds
      * @param receiveListener an action to invoke when got an answer
-     * @param timeoutListener an action to invoke when timeout exceeded and no message has been received
+     * @param onFail an action to invoke when timeout exceeded and no message has been received
      * @param <ReplyType>     response message type
      */
     public <ReplyType extends ResponseMessage> void send(
@@ -145,7 +145,7 @@ public class MessageSender implements Closeable {
             DispatchType type,
             int timeout,
             ReceiveListener<ReplyType> receiveListener,
-            TimeoutListener timeoutListener
+            TimeoutListener onFail
     ) {
         // 0 for idling, -1 for fail, 1 for received
         AtomicInteger ok = new AtomicInteger();
@@ -160,7 +160,7 @@ public class MessageSender implements Closeable {
 
         scheduler.schedule(timeout, () -> {
             if (ok.compareAndSet(0, -1)) {
-                processingQueue.offer(timeoutListener::onTimeout);
+                processingQueue.offer(onFail::onTimeout);
             }
         });
     }
@@ -336,7 +336,7 @@ public class MessageSender implements Closeable {
 
             received.offer(message);
         } catch (IOException | ClassCastException e) {
-            logger.info("Got some trash", e);
+            logger.trace(Colorer.paint("??", Colorer.Format.RED) + "Got some trash", e);
         }
     }
 

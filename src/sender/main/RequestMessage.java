@@ -6,7 +6,7 @@ public class RequestMessage<ReplyType extends ResponseMessage> extends Message {
     private static final long serialVersionUID = 524448056497362233L;
 
     @Override
-    public MessageIdentifier getIdentifier() {
+    final public MessageIdentifier getIdentifier() {
         return super.getIdentifier();
     }
 }
