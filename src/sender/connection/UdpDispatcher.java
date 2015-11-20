@@ -6,6 +6,8 @@ import java.util.Objects;
 import java.util.Optional;
 
 public class UdpDispatcher extends NetDispatcher {
+    public static final int MAX_PACKET_SIZE = 1500;
+
     private InetAddress broadcastAddress;
     private int port;
 
@@ -26,6 +28,10 @@ public class UdpDispatcher extends NetDispatcher {
 
     @Override
     protected void submit(SendInfo sendInfo) throws IOException {
+        if (sendInfo.data.length > MAX_PACKET_SIZE) {
+            logger.warn(String.format("Attempt to send UDP data of more than %d bytes. Data may get truncated", MAX_PACKET_SIZE));
+        }
+
         InetAddress address = Optional.ofNullable(sendInfo.address)
                 .map(InetSocketAddress::getAddress)
                 .orElse(broadcastAddress);

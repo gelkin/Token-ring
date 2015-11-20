@@ -7,7 +7,6 @@ import token.ring.NodeState;
 import token.ring.Priority;
 import token.ring.ScaredOfTokenMsgs;
 import token.ring.message.AmCandidateMsg;
-import token.ring.message.AmCandidateResponseMsg;
 import token.ring.message.AmSuperiorCandidateMsg;
 
 import java.util.stream.Stream;
@@ -24,13 +23,13 @@ public class CandidateState extends NodeState {
         Stream.concat(
                 new ScaredOfTokenMsgs(ctx, logger).getProtocols(),
                 Stream.of(
-                        new ListenToOtherCandidates()
+                        ReplyProtocol.on(AmCandidateMsg.class, this::reactOnMsgFromOtherCandidate)
                 )
         ).forEach(sender::registerReplyProtocol);
 
-        sender.broadcast(new AmCandidateMsg(ctx.getCurrentPriority()), 5000,
+        sender.broadcast(new AmCandidateMsg(ctx.getCurrentPriority()), ctx.getTimeout("candidate.main"),
                 (source, response) -> {
-                    logger.info("Detected superior candidate");
+                    response.logAboutThisMessage(logger);
                     ctx.switchToState(new WaiterState(ctx));
                 },
                 () -> {
@@ -40,30 +39,22 @@ public class CandidateState extends NodeState {
         );
     }
 
-    private class ListenToOtherCandidates implements ReplyProtocol<AmCandidateMsg, AmCandidateResponseMsg>{
-        @Override
-        public AmSuperiorCandidateMsg makeResponse(AmCandidateMsg otherCandidateClaim) {
-            Priority outPriority = ctx.getCurrentPriority();
-            int isHisGreater = otherCandidateClaim.priority.compareTo(outPriority);
-            if (isHisGreater > 0) {
-                logger.info(String.format("Detected Candidate with higher priority %s (our priority is %s)", otherCandidateClaim.priority, outPriority));
-                ctx.switchToState(new WaiterState(ctx));
-                return null;
-            } else if (isHisGreater == 0) {
-                logger.error("WTF? Heard the same priority from another candidate!");
-            } else {
-                logger.info(String.format("Detected Candidate with lower priority %s (our priority is %s)", otherCandidateClaim.priority, outPriority));
-            }
-
-            // tell him that he is not a nice guy
-            // in case he missed our proposal at election
-            return new AmSuperiorCandidateMsg();
+    private AmSuperiorCandidateMsg reactOnMsgFromOtherCandidate(AmCandidateMsg otherCandidateClaim) {
+        Priority ourPriority = ctx.getCurrentPriority();
+        int isHisGreater = otherCandidateClaim.priority.compareTo(ourPriority);
+        if (isHisGreater > 0) {
+            logger.info(String.format("Detected Candidate with higher priority %s (our priority is %s)", otherCandidateClaim.priority, ourPriority));
+            ctx.switchToState(new WaiterState(ctx));
+            return null;
+        } else if (isHisGreater == 0) {
+            logger.error("WTF? Heard the same priority from another candidate!");
+        } else {
+            logger.info(String.format("Detected Candidate with lower priority %s (our priority is %s)", otherCandidateClaim.priority, ourPriority));
         }
 
-        @Override
-        public Class<? extends AmCandidateMsg> requestType() {
-            return AmCandidateMsg.class;
-        }
+        // tell him that he is not a nice guy
+        // in case he missed our candidature
+        return new AmSuperiorCandidateMsg();
     }
 
 }

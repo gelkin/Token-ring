@@ -1,9 +1,10 @@
 package token.ring.message;
 
+import sender.message.ReminderIdentifier;
 import sender.message.ReminderMessage;
 
 public class WaiterTimeoutExpireReminder extends ReminderMessage {
-    public WaiterTimeoutExpireReminder(long factoryId, long reminderId) {
-        super(factoryId, reminderId);
+    public WaiterTimeoutExpireReminder(ReminderIdentifier id) {
+        super(id);
     }
 }

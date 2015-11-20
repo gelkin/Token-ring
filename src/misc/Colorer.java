@@ -31,7 +31,7 @@ public class Colorer {
         GREEN(32),
         YELLOW(33),
         BLUE(34),
-        MEGENTA(35),
+        MAGENTA(35),
         CYAN(36),
         PLAIN(37);
 

@@ -5,7 +5,8 @@ import org.apache.log4j.Logger;
 import sender.listeners.ReplyProtocol;
 
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 /**
  * Allows to create unique reminder messages.
@@ -17,27 +18,49 @@ public abstract class ReminderFactory<R extends ReminderMessage> implements Repl
 
     private static final AtomicLong factoriesCreated = new AtomicLong();
 
-    private final BiFunction<Long, Long, R> reminderCtor;
+    private final Function<ReminderIdentifier, R> reminderCtor;
 
     private final long factoryId = factoriesCreated.getAndIncrement();
     private final AtomicLong lastReminderId = new AtomicLong();
 
-    public ReminderFactory(BiFunction<Long, Long, R> reminderConstructor) {
+    private final Class<R> reminderType;
+
+    public ReminderFactory(Function<ReminderIdentifier, R> reminderConstructor) {
         this.reminderCtor = reminderConstructor;
+
+        R apply = reminderConstructor.apply(new ReminderIdentifier(-1, -1));
+        //noinspection unchecked
+        this.reminderType = (Class<R>) apply.getClass();
     }
 
     public R newReminder() {
-        return reminderCtor.apply(factoryId, lastReminderId.incrementAndGet());
+        ReminderIdentifier id = new ReminderIdentifier(factoryId, lastReminderId.incrementAndGet());
+        return reminderCtor.apply(id);
     }
 
     @Override
     public VoidMessage makeResponse(R r) {
-        if (factoryId == r.factoryId && lastReminderId.get() == r.reminderId) {
-            logger.info(Colorer.paint("!!", Colorer.Format.GREEN) + " Got reminder: " + r);
+        if (factoryId == r.getId().factoryId && lastReminderId.get() == r.getId().reminderId) {
+            logger.info(Colorer.paint("!!", Colorer.Format.MAGENTA) + " Got reminder: " + r);
             onRemind(r);
         }
         return null;
     }
 
     protected abstract void onRemind(R reminder);
+
+    @Override
+    public final Class<? extends R> requestType() {
+        return reminderType;
+    }
+
+    public static <R extends ReminderMessage> ReminderFactory of(Function<ReminderIdentifier, R> reminderConstructor, Consumer<R> onRemind) {
+        return new ReminderFactory<R>(reminderConstructor) {
+            @Override
+            protected void onRemind(R reminder) {
+                onRemind.accept(reminder);
+            }
+        };
+    }
+
 }

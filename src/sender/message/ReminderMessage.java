@@ -2,12 +2,27 @@ package sender.message;
 
 import sender.main.RequestMessage;
 
-public class ReminderMessage extends RequestMessage<VoidMessage> {
-    final long factoryId;
-    final long reminderId;
+import java.util.Objects;
 
-    public ReminderMessage(long factoryId, long reminderId) {
-        this.factoryId = factoryId;
-        this.reminderId = reminderId;
+public class ReminderMessage extends RequestMessage<VoidMessage> {
+    private final ReminderIdentifier id;
+
+    public ReminderMessage(ReminderIdentifier id) {
+        Objects.requireNonNull(id);
+        this.id = id;
+    }
+
+    ReminderIdentifier getId() {
+        return id;
+    }
+
+    @Override
+    protected boolean logOnSend() {
+        return false;
+    }
+
+    @Override
+    protected boolean logOnReceive(){
+        return false;
     }
 }

@@ -4,7 +4,9 @@ import com.sun.istack.internal.NotNull;
 import com.sun.istack.internal.Nullable;
 import sender.main.RequestMessage;
 import sender.main.ResponseMessage;
+import sender.message.VoidMessage;
 
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 public interface ReplyProtocol<RequestType extends RequestMessage<ReplyType>, ReplyType extends ResponseMessage> {
@@ -14,7 +16,8 @@ public interface ReplyProtocol<RequestType extends RequestMessage<ReplyType>, Re
     @NotNull
     Class<? extends RequestType> requestType();
 
-    static <Q extends RequestMessage<A>, A extends ResponseMessage> ReplyProtocol<Q, A> of(
+
+    static <Q extends RequestMessage<A>, A extends ResponseMessage> ReplyProtocol<Q, A> on(
             Class<? extends Q> requestType,
             Function<? super Q, ? extends A> responseConstructor
     ){
@@ -30,5 +33,24 @@ public interface ReplyProtocol<RequestType extends RequestMessage<ReplyType>, Re
             }
         };
     }
+
+    static <Q extends RequestMessage<A>, A extends ResponseMessage> ReplyProtocol<Q, A> dumbOn(
+            Class<? extends Q> requestType,
+            Consumer<? super Q> responseConstructor
+    ){
+        return new ReplyProtocol<Q, A>() {
+            @Override
+            public A makeResponse(Q q) {
+                responseConstructor.accept(q);
+                return null;
+            }
+
+            @Override
+            public Class<? extends Q> requestType() {
+                return requestType;
+            }
+        };
+    }
+
 
 }

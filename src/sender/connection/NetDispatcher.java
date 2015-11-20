@@ -7,7 +7,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
 public abstract class NetDispatcher implements Runnable {
-    private final Logger logger = Logger.getLogger(this.getClass());
+    protected final Logger logger = Logger.getLogger(this.getClass());
 
     private final BlockingQueue<SendInfo> queue = new LinkedBlockingQueue<>();
 
@@ -19,7 +19,7 @@ public abstract class NetDispatcher implements Runnable {
                 try {
                     submit(sendInfo);
                 } catch (IOException e) {
-                    logger.info(String.format("Dispatch failure (to %s)", sendInfo.address));
+                    logger.info(String.format("Dispatch failure (to %s, %s)", sendInfo.address, e.getMessage()));
                 }
             }
         } catch (InterruptedException e) {

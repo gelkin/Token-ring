@@ -23,19 +23,19 @@ public class ScaredOfTokenMsgs {
 
     public Stream<ReplyProtocol> getProtocols() {
         return Stream.<Class<? extends RequestMessage>>of(
-                // request types for processing of which we would delegate to waiter
+                // request types, processing of which we would delegate to waiter
                 HaveTokenMsg.class,
                 RequestForNodeInfo.class,
                 PassTokenHandshakeMsg.class,
                 AcceptToken.class
-        ).map(requestType -> ReplyProtocol.of(requestType, this::reactOnRequestFromToken));
+        ).map(requestType -> ReplyProtocol.dumbOn(requestType, this::reactOnRequestFromToken));
     }
 
-    private <T> T reactOnRequestFromToken(RequestMessage requestFromToken) {
-        // delegate processing to waiter
+    private void reactOnRequestFromToken(RequestMessage requestFromToken) {
+        logger.info("Received message from token, delegating it to waiter");
+
         ctx.switchToState(new WaiterState(ctx));
         ctx.sender.rereceive(requestFromToken);
-        return null;
     }
 
 }
