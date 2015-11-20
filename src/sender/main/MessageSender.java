@@ -136,7 +136,7 @@ public class MessageSender implements Closeable {
      * @param type            way of sending a message: TCP, single UPD...
      * @param timeout         timeout in milliseconds
      * @param receiveListener an action to invoke when got an answer
-     * @param onFail an action to invoke when timeout exceeded and no message has been received
+     * @param onFail          an action to invoke when timeout exceeded and no message has been received
      * @param <ReplyType>     response message type
      */
     public <ReplyType extends ResponseMessage> void send(
@@ -331,12 +331,12 @@ public class MessageSender implements Closeable {
     private void acceptMessage(byte[] bytes) {
         try {
             Message message = (Message) serializer.deserialize(bytes);
-            if (message.getIdentifier().unique.equals(unique) && message instanceof RequestMessage)
+            if (message instanceof RequestMessage && ((RequestMessage) message).getIdentifier().unique.equals(unique))
                 return;  // skip if sent by someone with same unique value; loopback messages are put to processing queue directly and hence not lost
 
             received.offer(message);
         } catch (IOException | ClassCastException e) {
-            logger.trace(Colorer.paint("??", Colorer.Format.RED) + "Got some trash", e);
+            logger.trace(Colorer.paint("??", Colorer.Format.RED) + " Got some trash", e);
         }
     }
 
@@ -423,12 +423,14 @@ public class MessageSender implements Closeable {
 
                     freezeControl.acquire();
                     try {
-                        if (message.logOnReceive())
-                            logger.info(ColoredArrows.RECEIVED + String.format(" %s %s", message.getIdentifier().unique, message));
-
-                        if (message instanceof RequestMessage)
+                        if (message instanceof RequestMessage) {
+                            if (message.logOnReceive())
+                                logger.info(ColoredArrows.RECEIVED + String.format(" %s %s", ((RequestMessage) message).getIdentifier().unique, message));
                             toProcess.offer(() -> process((RequestMessage) message));
+                        }
                         else if (message instanceof ResponseMessage) {
+                            if (message.logOnReceive())
+                                logger.info(ColoredArrows.RECEIVED + String.format(" %s", message));
                             toProcess.offer(() -> process((ResponseMessage) message));
                         } else
                             logger.warn("Got message of unknown type: " + message.getClass().getSimpleName());

@@ -10,7 +10,7 @@ public abstract class Message implements Serializable {
     private MessageIdentifier identifier;
     private InetSocketAddress responseListenerAddress;
 
-    public MessageIdentifier getIdentifier() {
+    MessageIdentifier getIdentifier() {
         return identifier;
     }
 

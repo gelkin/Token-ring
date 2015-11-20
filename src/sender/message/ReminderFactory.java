@@ -41,7 +41,7 @@ public abstract class ReminderFactory<R extends ReminderMessage> implements Repl
     @Override
     public VoidMessage makeResponse(R r) {
         if (factoryId == r.getId().factoryId && lastReminderId.get() == r.getId().reminderId) {
-            logger.info(Colorer.paint("!!", Colorer.Format.GREEN) + " Got reminder: " + r);
+            logger.info(Colorer.paint("!!", Colorer.Format.MAGENTA) + " Got reminder: " + r);
             onRemind(r);
         }
         return null;

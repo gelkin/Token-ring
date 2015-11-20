@@ -17,8 +17,12 @@ public class ReminderMessage extends RequestMessage<VoidMessage> {
     }
 
     @Override
-    protected boolean logOnReceive(){
+    protected boolean logOnSend() {
         return false;
     }
 
+    @Override
+    protected boolean logOnReceive(){
+        return false;
+    }
 }

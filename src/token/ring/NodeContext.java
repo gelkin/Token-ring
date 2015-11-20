@@ -1,6 +1,7 @@
 package token.ring;
 
 import computation.HexPiComputation;
+import misc.Colorer;
 import org.apache.log4j.Logger;
 import sender.main.MessageSender;
 import token.ring.states.WaiterState;
@@ -50,7 +51,7 @@ public class NodeContext implements Closeable {
         sender.freeze();
         newState.close();
 
-//        logger.info(Colorer.format("%2`$ -> $ %` State changed: %s -> %s", currentState.getClass().getSimpleName(), newState.getClass().getSimpleName()));
+        logger.info(Colorer.format("%2`$ -> $ %` State changed: %s -> %s", currentState.getClass().getSimpleName(), newState.getClass().getSimpleName()));
 //        tellToVisualizer(newState);
 
         currentState = newState;
