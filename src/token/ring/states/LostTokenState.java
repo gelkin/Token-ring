@@ -87,10 +87,10 @@ public class LostTokenState extends NodeState {
         if (isHisGreater < 0) {
             // set goingToStayAsIs to true and notify if it is a first such message
             if (goToStayAsIs()) {
-                logAboutMessage(amCandidateMsg, Colorer.format("Received from candidate with %1`higher%` priority %s (our priority is %s), going to repeat lifecycle"));
+                logAboutMessage(amCandidateMsg, Colorer.format("Received from candidate with %1`higher%` priority %%s (our priority is %%s), going to repeat lifecycle"));
             }
         } else if (isHisGreater > 0) {
-            logAboutMessage(amCandidateMsg, Colorer.format("Received from candidate with %2`lower%` priority %s (our priority is %s)"));
+            logAboutMessage(amCandidateMsg, Colorer.format("Received from candidate with %2`lower%` priority %%s (our priority is %%s)"));
             ctx.switchToState(new CandidateState(ctx));
         } else {
             logger.error("WTF? Got AmCandidateMsg with same priority as mine!");

@@ -19,7 +19,7 @@ public abstract class NetDispatcher implements Runnable {
                 try {
                     submit(sendInfo);
                 } catch (IOException e) {
-                    logger.info(String.format("Dispatch failure (to %s)", sendInfo.address));
+                    logger.info(String.format("Dispatch failure (to %s, %s)", sendInfo.address, e.getMessage()));
                 }
             }
         } catch (InterruptedException e) {
